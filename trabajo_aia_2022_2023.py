@@ -598,32 +598,38 @@ def sigmoide(x):
 
 
 class RegresionLogisticaMiniBatch:
-    def __init__(self, rate=0.1, rate_decay=False, n_epochs=100, batch_tam=64):
+    def __init__(self, rate=0.1, rate_decay=False, n_epochs=100, batch_tam=64, random_seed=1):
         self.rate = rate
         self.rate_decay = rate_decay
         self.n_epochs = n_epochs
         self.batch_tam = batch_tam
         self.pesos = None
+        self.seed = random_seed
 
+    
     def entrena(self, X, y, Xv=None, yv=None, n_epochs=100, salida_epoch=False,
                  early_stopping=False, paciencia=3):
             # Las clases están dadas por los valores de y, positiva en 2º lugar como es definida en los datos
             self.clases = np.unique(y)
             num_caract = X.shape[1]
+
+            np.random.seed(self.seed)
             self.pesos = np.random.randn(num_caract)
 
             mejor_EC = float('inf')
             cuenta_paciencia = 0
-            epsilon = 0.0000000001
-            y_pred = self.clasifica(X)
+            
             # Calcular e imprimir EC y rendimiento iniciales
             if salida_epoch:
-                
-                EC_inicial = -np.sum(y * np.log(y_pred + epsilon) + (1 - y) * np.log(1 - y_pred + epsilon))
+                EC_inicial = np.sum(self.entropia_cruzada(y,self.clasifica(X)))
                 rend_inicial = rendimiento(self, X, y)
                 print(f"Inicialmente, en entrenamiento EC: {EC_inicial}, rendimiento: {rend_inicial}")
+                if Xv is not None and yv is not None:
+                            EC_val =   np.sum(self.entropia_cruzada(yv,self.clasifica(Xv)))
+                            rend_val = rendimiento(self, Xv, yv)
+                            print(f"Inicialmente, en validación    EC: {EC_val}, rendimiento: {rend_val}")
 
-            for epoch in range(n_epochs):
+            for epoch in range(1, n_epochs):
                  # Barajar los datos al inicio de cada época
                 idx = np.random.permutation(X.shape[0])
                 X = X[idx]
@@ -631,7 +637,7 @@ class RegresionLogisticaMiniBatch:
                 # De 0 a tam_X, saltando de batch en batch
                 for i in range(0, X.shape[0], self.batch_tam):
                     X_mini, y_mini = X[i:i+self.batch_tam], y[i:i+self.batch_tam]
-                    grad = np.dot(X_mini.T, (y_mini - self.clasifica_prob(X_mini) )) #/ y_mini.size
+                    grad = -np.dot(X_mini.T, (y_mini - self.clasifica_prob(X_mini))) 
                     
                     # Actualizacion de tasa de aprendizaje  
                     if self.rate_decay:
@@ -641,23 +647,22 @@ class RegresionLogisticaMiniBatch:
                     self.pesos += self.rate * grad
 
                 if salida_epoch or early_stopping:
-                    EC_train = -np.sum(y * np.log(self.clasifica(X) + epsilon) + (1 - y) * np.log(1 - self.clasifica(X) + epsilon))
+                    
+                    EC_train = np.sum(self.entropia_cruzada(y,self.clasifica(X)))
                     if salida_epoch:
                         rend = rendimiento(self,X, y)
                         print(f"Epoch {epoch}, en entrenamiento EC: {EC_train}, rendimiento: {rend}")
                         if Xv is not None and yv is not None:
-                            y_pred_val = self.clasifica(Xv)
-                            EC_val =  -np.sum(yv * np.log(self.clasifica(Xv) + epsilon) + (1 - yv) * np.log(1 - self.clasifica(Xv) + epsilon))
+                            EC_val =   np.sum(self.entropia_cruzada(yv,self.clasifica(Xv)))
                             rend_val = rendimiento(self, Xv, yv)
-                            print(f"\t en validación    EC: {EC_val}, rendimiento (val): {rend_val}")
+                            print(f"\t en validación    EC: {EC_val}, rendimiento : {rend_val}")
 
                     if early_stopping:
                         
                         #No se usa validacion cuando hay early stopping: Xv e yv son resp. X e y.
                         Xv = X
                         yv = y
-                        # TODO: calcular la entropia cruzada sin una funcion auxiliar, usando un np.where instead
-                        EC_val =  -np.sum(yv * np.log(self.clasifica(Xv) + epsilon) + (1 - yv) * np.log(1 - self.clasifica(Xv) + epsilon))
+                        EC_val =  np.sum(self.entropia_cruzada(yv,self.clasifica(Xv)))
                         if EC_val < mejor_EC:
                             mejor_EC = EC_val
                             cuenta_paciencia = 0
@@ -671,39 +676,21 @@ class RegresionLogisticaMiniBatch:
         if self.pesos is None:
             raise ClasificadorNoEntrenado("El clasificador no ha sido entrenado.")
         z = np.dot(X, self.pesos)
-        # expit(z) equivale a sigmoide(z)
         return sigmoide(z)
     
 
     def clasifica(self, X):
         return np.where(self.clasifica_prob(X) >= 0.5, self.clases[1], self.clases[0])
     
+    
+    def entropia_cruzada(self, y,y_pred):
+        epsilon = 0.0000000001
+        return (-y * np.log(y_pred + epsilon) - (1 - y) * np.log(1 - y_pred + epsilon))
+    
 
-lr_cancer=RegresionLogisticaMiniBatch(rate=0.001,rate_decay=True)
+
+lr_cancer=RegresionLogisticaMiniBatch(rate=0.1,rate_decay=True, random_seed=0)
 lr_cancer.entrena(Xe_cancer_n,ye_cancer,Xv_cancer_n,yv_cancer,salida_epoch=True,early_stopping=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ------------------------------------------------------------------------------
-
 
 
 
@@ -804,20 +791,18 @@ def rendimiento_validacion_cruzada(clase_clasificador, params, X, y, n=5):
         rendimientos.append(rend)
 
         print(f"Partición: {i+1}. Rendimiento:{rend}")
-
     # Devolver el rendimiento medio
     return np.mean(rendimientos)
 
+#------------------------------------------------------------------------------
 
 # test
 rendimiento_validacion_cruzada(RegresionLogisticaMiniBatch,{"batch_tam":16,"rate":0.01,"rate_decay":True},Xe_cancer_n,ye_cancer,n=5)
 
-
-
 lr16=RegresionLogisticaMiniBatch(batch_tam=16,rate=0.01,rate_decay=True)
 lr16.entrena(Xe_cancer_n,ye_cancer)
 
-rendimiento(lr16,Xv_cancer_n,yv_cancer)
+print(rendimiento(lr16,Xv_cancer_n,yv_cancer))
 
 
 
@@ -856,6 +841,11 @@ rendimiento(lr16,Xv_cancer_n,yv_cancer)
 
 # ----------------------------
 
+
+# ----------------------------
+# - Cáncer de mama 
+# ----------------------------
+
 mejor_rendimiento = 0
 mejor_rate = 0
 mejor_batch_tam = 0
@@ -870,8 +860,8 @@ for rate in [0.1, 0.01, 0.001]:
             lr.entrena(Xe_cancer_n, ye_cancer, salida_epoch=False)
             
             # Evaluar rendimiento
-            rend = rendimiento(lr, Xv_cancer_n, yv_cancer)
-            print(f"rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend}")
+            rend = rendimiento_validacion_cruzada(RegresionLogisticaMiniBatch,{"batch_tam":batch_tam,"rate":rate,"rate_decay":rate_decay}, Xe_cancer_n,ye_cancer,n=5)
+            print(f"\n rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")
             
             # Actualizar mejores parámetros si es necesario
             if rend > mejor_rendimiento:
@@ -880,9 +870,51 @@ for rate in [0.1, 0.01, 0.001]:
                 mejor_batch_tam = batch_tam
                 mejor_rate_decay = rate_decay
 
-print(f"Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {mejor_rate_decay}, rendimiento: {mejor_rendimiento}")
+print(f"Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {mejor_rate_decay}, rendimiento: {mejor_rendimiento} \n")
+
 lr = RegresionLogisticaMiniBatch(rate=mejor_rate, batch_tam=mejor_batch_tam, rate_decay=mejor_rate_decay)
 lr.entrena(Xe_cancer_n, ye_cancer, early_stopping=True, salida_epoch=True)
+
+# ----------------------------
+# - Votos de congresistas US
+# ----------------------------
+
+Xe_votos,Xp_votos,ye_votos,yp_votos=particion_entr_prueba(X_votos,y_votos,test=1/3)
+normst_votos=NormalizadorStandard()
+normst_votos.ajusta(Xe_votos)
+Xe_votos_n=normst_votos.normaliza(Xe_votos)
+normst_votos.ajusta(Xp_votos)
+Xp_votos_n=normst_votos.normaliza(Xp_votos)
+
+mejor_rendimiento = 0
+mejor_rate = 0
+mejor_batch_tam = 0
+mejor_rate_decay = False
+# TODO: Arreglar el fallo que impide entrenar al modelo
+
+# Búsqueda de parámetros
+for rate in [0.1, 0.01, 0.001]:
+    for batch_tam in [16, 32, 64, 128]:
+        for rate_decay in [True, False]:
+            # Crear y entrenar el modelo
+            lr = RegresionLogisticaMiniBatch(rate=rate, batch_tam=batch_tam, rate_decay=rate_decay)
+            lr.entrena(Xe_votos_n, ye_votos, salida_epoch=False)
+            
+            # Evaluar rendimiento
+            rend = rendimiento_validacion_cruzada(RegresionLogisticaMiniBatch,{"batch_tam":batch_tam,"rate":rate,"rate_decay":rate_decay}, Xe_votos_n,ye_votos,n=5)
+            print(f"\n rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")
+            
+            # Actualizar mejores parámetros si es necesario
+            if rend > mejor_rendimiento:
+                mejor_rendimiento = rend
+                mejor_rate = rate
+                mejor_batch_tam = batch_tam
+                mejor_rate_decay = rate_decay
+
+print(f"Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {mejor_rate_decay}, rendimiento: {mejor_rendimiento} \n")
+
+lr = RegresionLogisticaMiniBatch(rate=mejor_rate, batch_tam=mejor_batch_tam, rate_decay=mejor_rate_decay)
+lr.entrena(Xe_votos_n, ye_votos, early_stopping=True, salida_epoch=True)
 
 
 
