@@ -183,43 +183,82 @@ import numpy as np
 from carga_datos import *
 import numpy as np
 
-
 def particion_entr_prueba(X, y, test=0.2):
-    # Misma semilla que el ejemplo
-    np.random.seed(1)
-    # obtener el tamaño de los datos
-    num_datos = X.shape[0]
-    # obtener los índices de los datos y barajarlos
-    indices = np.arange(num_datos)
-    np.random.shuffle(indices)
     
-    # calcular el tamaño de los conjuntos de prueba y entrenamiento
-    tam_test = int(num_datos * test)
-    
-    # obtener los índices de los conjuntos de prueba y entrenamiento
-    indices_test = indices[:tam_test]
-    indices_entr = indices[tam_test:]
-    
-    # obtener los conjuntos de prueba y entrenamiento
+    # Inicializamos los índices vacíos
+    indices_test = list()
+    indices_entr = list()
+
+    # haremos la división por cada clase, y lo iremos añadiendo a la final
+    for clase in np.unique(y):
+
+        indicesClase = np.where(y==clase)[0]    # Cogemos los índices de la clase actual
+        np.random.shuffle(indicesClase)         # al hacer un shuffle forzamos que sea aleatorio
+        tam_test = int(len(indicesClase)*test)  # escogemos cuantos seran para test
+
+        indices_test.extend(indicesClase[:tam_test]) # Finalmente con slicing escogemos los que seran
+        indices_entr.extend(indicesClase[tam_test:]) # para entr/test de la clase y lo añadimos al total
+
+    # tenemos los índices, ahora escogemos los ejemplos del Dataset Original
     X_entr = X[indices_entr]
     y_entr = y[indices_entr]
     X_test = X[indices_test]
     y_test = y[indices_test]
-    
+
     return X_entr, X_test, y_entr, y_test
+
 ## ---------- 
+
 # Test 
 
-Xe_cancer,Xv_cancer,ye_cancer,yv_cancer=particion_entr_prueba(X_cancer,y_cancer,test=0.2)
-np.unique(ye_cancer,return_counts=True)
-# > (array([0, 1]), array([170, 286]))
-
-
+Xev_cancer,Xp_cancer,yev_cancer,yp_cancer=particion_entr_prueba(X_cancer,y_cancer,test=0.2)
+Xe_cancer,Xv_cancer,ye_cancer,yv_cancer=particion_entr_prueba(Xev_cancer,yev_cancer,test=0.2)
+Xe_votos,Xp_votos,ye_votos,yp_votos=particion_entr_prueba(X_votos,y_votos,test=1/3)
 Xe_credito,Xp_credito,ye_credito,yp_credito=particion_entr_prueba(X_credito,y_credito,test=0.4)
-print(np.unique(y_credito,return_counts=True))
-# > (array(['conceder', 'estudiar', 'no conceder'], dtype='<U11'), array([202, 228, 220]))
-print(Xp_credito)
-print(yp_credito)
+
+def testEj1():
+
+    print("\n###########################################")
+    print("############### EJERCICIO 1 ###############")
+    print("###########################################\n")
+
+    clases, count = np.unique(y_votos,return_counts=True)
+    clasesE, countE = np.unique(ye_votos,return_counts=True)
+    clasesP, countP = np.unique(yp_votos,return_counts=True)
+
+    print("->              Datos de Votos\n")
+    print("   Proporciones      - Original: {0} - Entrenamiento: {1} - Prueba: {2}".format(y_votos.shape[0],ye_votos.shape[0],yp_votos.shape[0]), "\n")
+    print("   Conjunto Original - clases:{0} - Nº de ejemplos: {1} - Distribución: {2}    ".format(clases, count, (count / np.sum(count)) * 100))
+    print("   Entrenamiento     - clases:{0} - Nº de ejemplos: {1} - Distribución: {2}    ".format(clasesE, countE, (countE / np.sum(countE)) * 100))
+    print("   Prueba            - clases:{0} - Nº de ejemplos: {1} - Distribución: {2}    ".format(clasesP, countP, (countP / np.sum(countP)) * 100),"\n")
+
+    clases, count = np.unique(y_cancer,return_counts=True)
+    clasesEv, countEv = np.unique(yev_cancer,return_counts=True)
+    clasesP, countP = np.unique(yp_cancer,return_counts=True)
+    clasesE, countE = np.unique(ye_cancer,return_counts=True)
+    clasesV, countV = np.unique(yv_cancer,return_counts=True)
+
+
+    print("->              Datos de Cancer\n")
+    print("   Proporciones      - Original: {0} - Entrenamiento: {1}    - Prueba: {2}".format(y_cancer.shape[0],ye_cancer.shape[0],yp_cancer.shape[0]), "\n")
+    print("   Conjunto Original - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clases, count, (count / np.sum(count)) * 100))
+    print("   Entr y Val        - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesEv, countEv, (countEv / np.sum(countEv)) * 100))
+    print("   · Entrenamiento   - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesE, countE, (countE / np.sum(countE)) * 100))
+    print("   · Validacion      - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesV, countV, (countE / np.sum(countE)) * 100))
+    print("   Prueba            - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesP, countP, (countP / np.sum(countP)) * 100),"\n")
+
+
+    clases, count = np.unique(y_credito,return_counts=True)
+    clasesE, countE = np.unique(ye_credito,return_counts=True)
+    clasesP, countP = np.unique(yp_credito,return_counts=True)
+
+    print("->              Datos de Creditos\n")
+    print("   Proporciones      - Original: {0} - Entrenamiento: {1}    - Prueba: {2}".format(y_cancer.shape[0],ye_cancer.shape[0],yp_cancer.shape[0]), "\n")
+    print("   Conjunto Original - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clases, count, (count / np.sum(count)) * 100))
+    print("   Entrenamiento     - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesE, countE, (countE / np.sum(countE)) * 100))
+    print("   Prueba            - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesP, countP, (countP / np.sum(countP)) * 100),"\n")
+
+# testEj1()
 
 
 # ===========================
@@ -287,6 +326,7 @@ class NormalizadorNoAjustado(Exception): pass
 # ------ 
 
 class NormalizadorStandard():
+    
     def __init__(self):
         self.ajustado = False
 
@@ -331,7 +371,7 @@ std = np.std(Xe_cancer_n, axis=0)
 print("Media:", media)
 print("Desviación estándar:", std)
 
-
+raise
 
 
 
