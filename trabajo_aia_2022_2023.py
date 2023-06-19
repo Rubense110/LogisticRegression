@@ -47,6 +47,7 @@
 
 from carga_datos import *
 import numpy as np
+import matplotlib.pyplot as plt
 
 # *****************************************
 # CONJUNTOS DE DATOS A USAR EN ESTE TRABAJO
@@ -226,7 +227,7 @@ def testEj1():
     clasesE, countE = np.unique(ye_votos,return_counts=True)
     clasesP, countP = np.unique(yp_votos,return_counts=True)
 
-    print("->              Datos de Votos\n")
+    print("##->              Datos de Votos\n")
     print("   Proporciones      - Original: {0} - Entrenamiento: {1} - Prueba: {2}".format(y_votos.shape[0],ye_votos.shape[0],yp_votos.shape[0]), "\n")
     print("   Conjunto Original - clases:{0} - Nº de ejemplos: {1} - Distribución: {2}    ".format(clases, count, (count / np.sum(count)) * 100))
     print("   Entrenamiento     - clases:{0} - Nº de ejemplos: {1} - Distribución: {2}    ".format(clasesE, countE, (countE / np.sum(countE)) * 100))
@@ -239,7 +240,7 @@ def testEj1():
     clasesV, countV = np.unique(yv_cancer,return_counts=True)
 
 
-    print("->              Datos de Cancer\n")
+    print("##->              Datos de Cancer\n")
     print("   Proporciones      - Original: {0} - Entrenamiento: {1}    - Prueba: {2}".format(y_cancer.shape[0],ye_cancer.shape[0],yp_cancer.shape[0]), "\n")
     print("   Conjunto Original - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clases, count, (count / np.sum(count)) * 100))
     print("   Entr y Val        - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesEv, countEv, (countEv / np.sum(countEv)) * 100))
@@ -252,7 +253,7 @@ def testEj1():
     clasesE, countE = np.unique(ye_credito,return_counts=True)
     clasesP, countP = np.unique(yp_credito,return_counts=True)
 
-    print("->              Datos de Creditos\n")
+    print("##->              Datos de Creditos\n")
     print("   Proporciones      - Original: {0} - Entrenamiento: {1}    - Prueba: {2}".format(y_cancer.shape[0],ye_cancer.shape[0],yp_cancer.shape[0]), "\n")
     print("   Conjunto Original - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clases, count, (count / np.sum(count)) * 100))
     print("   Entrenamiento     - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesE, countE, (countE / np.sum(countE)) * 100))
@@ -330,50 +331,53 @@ class NormalizadorStandard():
     def __init__(self):
         self.ajustado = False
 
+    # Ajusta calcula los valores para cada valor de X
     def ajusta(self, X):
         self.media = np.mean(X, axis=0)
         self.std = np.std(X, axis=0)
-        self.ajustado = True
+        self.ajustado = True    # Ahora está ajustado
 
+    # Normalizamos los datos
     def normaliza(self, X):
-        if not self.ajustado:
+        if not self.ajustado:   # Si no pasamos por ajusta debemos hacer que salte error
             raise NormalizadorNoAjustado("Normalizador no ajustado")
         return (X - self.media) / self.std
     
 # ----------
-# Testing
-
-X = np.array([[1, 2, 3],
-              [4, 5, 6],
-              [7, 8, 9]])
-
-# Crear instancia del normalizador
-normalizador = NormalizadorStandard()
-normalizador.ajusta(X)
-X_normalizado = normalizador.normaliza(X)
-
-print("Datos normalizados:")
-print(X_normalizado)
-
-# ----------
+# Test
 
 normst_cancer=NormalizadorStandard()
 normst_cancer.ajusta(Xe_cancer)
 Xe_cancer_n=normst_cancer.normaliza(Xe_cancer)
-normst_cancer.ajusta(Xv_cancer)
 Xv_cancer_n=normst_cancer.normaliza(Xv_cancer)
-print(Xe_cancer)
-print(Xe_cancer_n)
+Xp_cancer_n=normst_cancer.normaliza(Xp_cancer)
 
-media = np.mean(np.mean(Xe_cancer_n, axis=0))
-std = np.std(Xe_cancer_n, axis=0)
+X = np.array([[1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]])
 
-print("Media:", media)
-print("Desviación estándar:", std)
+normalizador = NormalizadorStandard()
+normalizador.ajusta(X)
+X_normalizado = normalizador.normaliza(X)
 
-raise
+def testEj2_1():
+
+    print("\n###########################################")
+    print("############## EJERCICIO 2.1 ##############")
+    print("###########################################\n")
+
+    print("##->              Datos de Cancer Normalizados Standard\n")
+    print("Entrenamiento\n\n- Media   {0}\n- Desviaciación típica   {1}\n".format(np.mean(Xe_cancer_n), np.std(Xe_cancer_n, axis = 0)))
+    print("Validación   \n\n- Media   {0}\n- Desviaciación típica   {1}\n".format(np.mean(Xv_cancer_n), np.std(Xv_cancer_n, axis = 0)))
+    print("Prueba       \n\n- Media   {0}\n- Desviaciación típica   {1}\n".format(np.mean(Xp_cancer_n), np.std(Xp_cancer_n, axis = 0)))
+
+    print("##->              Datos de Prueba\n")
+    print("Datos Originales  :\n {}\n".format(X))
+    print("Datos Normalizados:\n {}\n".format(X_normalizado))
+    print("- Media   {0}\n- Desviaciación típica   {1}\n".format(np.mean(X_normalizado), np.std(X_normalizado, axis = 0)))
 
 
+#testEj2_1()
 
 # ------------------------
 # 2.2) Normalizador MinMax
@@ -404,39 +408,50 @@ class NormalizadorMinMax:
     def __init__(self):
         self.ajustado = False
 
+    # Calcula el mínimo y el máximo de cada Característica (axis=0) de X
     def ajusta(self, X):
         self.minimo = np.min(X, axis=0)
         self.maximo = np.max(X, axis=0)
-        self.ajustado = True
+        self.ajustado = True    # Ahora está ajustado
 
+    # Normalizamos los datos
     def normaliza(self, X):
         if not self.ajustado:
-            raise NormalizadorNoAjustado("Normalizador no ajustado")
+            raise NormalizadorNoAjustado("Normalizador no ajustado")    # Si no pasamos por ajusta debemos hacer que salte error
         return (X - self.minimo) / (self.maximo - self.minimo)
 
 # ----------
+# Test
 
-X = np.array([[1, 2, 3],
-              [4, 5, 6],
-              [7, 8, 9]])
+normst_cancer_minmax=NormalizadorMinMax()
+normst_cancer_minmax.ajusta(Xe_cancer)
+Xe_cancer_n_minmax=normst_cancer_minmax.normaliza(Xe_cancer)
+Xv_cancer_n_minmax=normst_cancer_minmax.normaliza(Xv_cancer)
+Xp_cancer_n_minmax=normst_cancer_minmax.normaliza(Xp_cancer)
 
-# Crear instancia del normalizador
-normalizador = NormalizadorMinMax()
-normalizador.ajusta(X)
-X_normalizado = normalizador.normaliza(X)
+normalizador_minmax = NormalizadorMinMax()
+normalizador_minmax.ajusta(X)
+X_normalizado_minmax = normalizador_minmax.normaliza(X)
 
-print("Normalizacion MinMax:")
-print(X_normalizado)
+def testEj2_2():
+
+    print("\n###########################################")
+    print("############## EJERCICIO 2.2 ##############")
+    print("###########################################\n")
+
+    print("##->              Datos de Cancer Normalizados MinMax\n")
+    print("- Datos Originales  :\n {}\n".format(Xe_cancer))
+    print("- Datos Normalizados:\n {}\n".format(Xe_cancer_n_minmax))
+    print("- Mínimo: ",np.min(Xe_cancer_n_minmax))
+    print("- Máximo: {}\n".format(np.max(Xe_cancer_n_minmax)))
 
 
+    print("##->              Datos de Prueba\n")
+    print("- Datos Originales  :\n {}\n".format(X))
+    print("- Datos Normalizados:\n {}\n".format(X_normalizado_minmax))
 
 
-
-
-
-
-
-
+testEj2_2()
 # ===========================================
 # EJERCICIO 3: REGRESIÓN LOGÍSTICA MINI-BATCH
 # ===========================================
