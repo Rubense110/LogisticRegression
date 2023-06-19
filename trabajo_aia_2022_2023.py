@@ -258,7 +258,6 @@ def testEj1():
     print("   Entrenamiento     - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesE, countE, (countE / np.sum(countE)) * 100))
     print("   Prueba            - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesP, countP, (countP / np.sum(countP)) * 100),"\n")
 
-testEj1()
 
 # ===========================
 # EJERCICIO 2: NORMALIZADORES
@@ -375,7 +374,8 @@ def testEj2_1():
     print("- Media   {0}\n- Desviaciación típica   {1}\n".format(np.mean(X_normalizado), np.std(X_normalizado, axis = 0)))
 
 
-# testEj2_1()
+
+
 
 # ------------------------
 # 2.2) Normalizador MinMax
@@ -449,7 +449,6 @@ def testEj2_2():
     print("- Datos Normalizados:\n {}\n".format(X_normalizado_minmax))
 
 
-testEj2_2()
 
 
 
@@ -683,7 +682,8 @@ class RegresionLogisticaMiniBatch:
                 
                 EC_inicial = np.sum(self.entropia_cruzada(y,self.clasifica(X)))
                 rend_inicial = rendimiento(self, X, y)
-                print(f"Inicialmente, en entrenamiento EC: {EC_inicial}, rendimiento: {rend_inicial}")
+                print("\t-------")
+                print(f"\tInicialmente, en entrenamiento EC: {EC_inicial}, rendimiento: {rend_inicial}\n")
 
             for epoch in range(n_epochs):
                  # Barajar los datos al inicio de cada época
@@ -706,11 +706,12 @@ class RegresionLogisticaMiniBatch:
                     EC_train = np.sum(self.entropia_cruzada(y,self.clasifica(X)))
                     if salida_epoch:
                         rend = rendimiento(self,X, y)
-                        print(f"Epoch {epoch}, en entrenamiento EC: {EC_train}, rendimiento: {rend}")
+                        print("\t-------")
+                        print(f"\tEpoch {epoch}, en entrenamiento EC: {EC_train}, rendimiento: {rend}")
                         if Xv is not None and yv is not None:
                             EC_val =   np.sum(self.entropia_cruzada(yv,self.clasifica(Xv)))
                             rend_val = rendimiento(self, Xv, yv)
-                            print(f"\t en validación    EC: {EC_val}, rendimiento : {rend_val}")
+                            print(f"\t\t en validación    EC: {EC_val}, rendimiento : {rend_val}\n")
 
                     if early_stopping:
                         
@@ -724,7 +725,8 @@ class RegresionLogisticaMiniBatch:
                         else:
                             cuenta_paciencia += 1
                             if cuenta_paciencia >= paciencia:
-                                print("PARADA TEMPRANA")
+                                print("\t-------")
+                                print("\tPARADA TEMPRANA\n")
                                 return
 
     def clasifica_prob(self, X):
@@ -743,14 +745,25 @@ class RegresionLogisticaMiniBatch:
         epsilon = 0.0000000001
         return (-y * np.log(y_pred + epsilon) - (1 - y) * np.log(1 - y_pred + epsilon))
     
+def test_Ej3():
 
-lr_cancer=RegresionLogisticaMiniBatch(rate=0.1,rate_decay=True, random_seed=1)
-lr_cancer.entrena(Xe_cancer_n,ye_cancer,Xv_cancer_n,yv_cancer,salida_epoch=True,early_stopping=True)
+    lr_cancer=RegresionLogisticaMiniBatch(rate=0.1,rate_decay=True, random_seed=1)
+    print("\n###########################################")
+    print("############### EJERCICIO 3 ###############")
+    print("###########################################\n")
 
+    print("##->              Datos de Cancer\n")
+    lr_cancer.entrena(Xe_cancer_n,ye_cancer,Xv_cancer_n,yv_cancer,salida_epoch=True,early_stopping=True)
+    predicciones = lr_cancer.clasifica(Xp_cancer_n[24:27])
+    probabilidades = lr_cancer.clasifica_prob(Xp_cancer_n[24:27])
+    rendCEntren = rendimiento(lr_cancer,Xe_cancer_n,ye_cancer)
+    rendCPrueba = rendimiento(lr_cancer,Xp_cancer_n,yp_cancer)
 
-
-
-
+    print("\t- Predicciones\n\t   Ejemplo 24: {0}\n\t   Ejemplo 25: {1}\n\t   Ejemplo 26: {2}\n ".format(predicciones[0],predicciones[1],predicciones[2]))
+    print("\t- Valores Reales\n\t   Ejemplo 24: {0}\n\t   Ejemplo 25: {1}\n\t   Ejemplo 26: {2}\n ".format(yp_cancer[24:27][0],yp_cancer[24:27][1],yp_cancer[24:27][2]))
+    print("\t- Probabilidad de pertenecer a la clase positiva:")
+    print("\t   Ejemplo 24: {0}\n\t   Ejemplo 25: {1}\n\t   Ejemplo 26: {2}\n ".format(probabilidades[0],probabilidades[1],probabilidades[2]))
+    print("\t- Rendimiento\n\t   Entrenamiento: {0}\n\t   Prueba: {1}".format(rendCEntren,rendCPrueba))
 
 
 # =================================================
@@ -830,14 +843,24 @@ def rendimiento_validacion_cruzada(clase_clasificador, params, X, y, n=5):
     # Tamaño de una sola partición
     tam_part = tam_X // n
     rendimientos = []
+    indices_test = list()
+    indices_entr = list()
 
     # Iterar a través de cada partición para usarla como conjunto de prueba
+    # Para hacer una division estratificada seguiremos el método que usamos en el ejercicio 1
+    # Es decir, dividiremos para cada clase y luego combinaremos los subconjuntos 
+    
     for i in range(n):
-        # Crear conjuntos de entrenamiento y prueba para esta iteración
-        indices_test = indices[i*tam_part:(i+1)*tam_part]
-        indices_entrena = np.concatenate((indices[:i*tam_part], indices[(i+1)*tam_part:]))
-        X_entrena, X_test = X[indices_entrena], X[indices_test]
-        y_entrena, y_test = y[indices_entrena], y[indices_test]
+        for clase in np.unique(y):
+            # Crear conjuntos de entrenamiento y prueba para esta iteración
+            # Primero creamos el conjunto de prueba
+            indices_clase = np.where(y==clase)[0]
+            indices_test.extend(indices_clase[i*tam_part:(i+1)*tam_part]) 
+            # Ahora excluimos los índices que están en ese conjunto de los que usaremos para entrenar
+            indices_entr.extend(np.concatenate((indices_clase[:i*tam_part], indices_clase[(i+1)*tam_part:])))  
+
+        X_entrena, X_test = X[indices_entr], X[indices_test]
+        y_entrena, y_test = y[indices_entr], y[indices_test]
 
         # Crear y entrenar el modelo
         modelo = clase_clasificador(**params)
@@ -847,30 +870,33 @@ def rendimiento_validacion_cruzada(clase_clasificador, params, X, y, n=5):
         rend = rendimiento(modelo, X_test, y_test)
         rendimientos.append(rend)
 
-        print(f"Partición: {i+1}. Rendimiento:{rend}")
-    # Devolver el rendimiento medio
+        print("\t-------")
+        print(f"\tPartición: {i+1}. Rendimiento:{rend}")
+        # Devolver el rendimiento medio
+    print("\t-------")
     return np.mean(rendimientos)
 
 #------------------------------------------------------------------------------
 
 # test
-rendimiento_validacion_cruzada(RegresionLogisticaMiniBatch,{"batch_tam":16,"rate":0.01,"rate_decay":True},Xe_cancer_n,ye_cancer,n=5)
 
-lr16=RegresionLogisticaMiniBatch(batch_tam=16,rate=0.01,rate_decay=True)
-lr16.entrena(Xe_cancer_n,ye_cancer)
+def testEj4():
+    print("\n###########################################")
+    print("############### EJERCICIO 4 ###############")
+    print("###########################################\n")
 
-print(rendimiento(lr16,Xv_cancer_n,yv_cancer))
+    print("##->              Datos de Cancer\n")
+    r = rendimiento_validacion_cruzada(RegresionLogisticaMiniBatch,{"batch_tam":16,"rate":0.01,"rate_decay":True},Xe_cancer_n,ye_cancer,n=5)
+    lr16=RegresionLogisticaMiniBatch(batch_tam=16,rate=0.01,rate_decay=True)
+    lr16.entrena(Xe_cancer_n,ye_cancer)
+
+    print(f"\n\tResultado Medio:               {r}")
+    print(f"\tRendimiento en Cjto de Prueba: {rendimiento(lr16,Xp_cancer_n,yp_cancer)}\n")
+
+testEj4()
 
 
-
-
-
-
-
-
-
-
-
+raise
 # ===================================================
 # EJERCICIO 5: APLICANDO LOS CLASIFICADORES BINARIOS
 # ===================================================
@@ -1531,7 +1557,14 @@ rendimiento(rl_iris_m,Xe_iris,ye_iris)
 rendimiento(rl_iris_m,Xp_iris,yp_iris)
 # >>> 0.9736842105263158
 
+####################################### TESTING ##################################
 
+#testEj1()
+#testEj2_1()
+#testEj2_2()
+#test_Ej3()
+
+##################################################################################
 
 
 
