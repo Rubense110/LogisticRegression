@@ -823,7 +823,6 @@ lr_cancer.entrena(Xe_cancer_n,ye_cancer,Xv_cancer_n,yv_cancer,salida_epoch=True,
 #------------------------------------------------------------------------------
 
 def rendimiento_validacion_cruzada(clase_clasificador, params, X, y, n=5):
-    # Número de muestras
     tam_X = X.shape[0]
     # Crear índices para estratificación
     indices = np.arange(tam_X)
@@ -1053,21 +1052,21 @@ class RL_OvR():
         self.rate = rate
         self.rate_decay = rate_decay
         self.batch_tam = batch_tam
-        self.clasificadores = {}  # aquí almacenaremos cada uno de los clasificadores binarios
+        self.clasificadores = {} 
 
     def entrena(self, X, y, n_epochs=100, salida_epoch=False):
-        self.clases = np.unique(y)  # identificamos las diferentes clases en los datos
+        self.clases = np.unique(y)  
 
         # Entrenamos un clasificador por cada clase
         for clase in self.clases:
             # Creamos una copia de las etiquetas y asignamos todas las instancias que no pertenecen a la clase actual a 0
             y_temp = np.where(y == clase, 1, 0)
             
-            # Creamos y entrenamos el clasificador
+            # Entrenamiento
             clasificador = RegresionLogisticaMiniBatch(rate=self.rate, rate_decay=self.rate_decay, batch_tam=self.batch_tam)
             clasificador.entrena(X, y_temp, n_epochs=n_epochs, salida_epoch=salida_epoch)
             
-            # Almacenamos el clasificador
+            # Segun la clase, se le asigna un clasificador u otro
             self.clasificadores[clase] = clasificador
 
     def clasifica(self, ejemplos):
@@ -1077,10 +1076,12 @@ class RL_OvR():
         # Devolvemos la clase con la probabilidad más alta para cada ejemplo
         return self.clases[np.argmax(probabilidades, axis=0)]
 
+# --------------------------------
+
 # Test
 Xe_iris,Xp_iris,ye_iris,yp_iris=particion_entr_prueba(X_iris,y_iris)
 
-rl_iris_ovr=RL_OvR(rate=0.001,batch_tam=8)
+rl_iris_ovr=RL_OvR(rate=0.01,batch_tam=8)
 
 rl_iris_ovr.entrena(Xe_iris,ye_iris)
 
@@ -1163,25 +1164,21 @@ rendimiento(rl_iris_ovr,Xp_iris,yp_iris)
 # -------- 
 
 def codifica_one_hot(X):
-    # Inicializamos una lista vacía para almacenar las matrices one-hot
     matrices_one_hot = []
     
-    # Recorremos todas las columnas del conjunto de datos
     for i in range(X.shape[1]):
-        # Obtenemos los valores únicos en la columna actual
         valores_unicos = np.unique(X[:, i])
         
-        # Creamos una matriz de ceros de tamaño (número de filas de X) x (número de valores únicos)
-        matriz_one_hot = np.zeros((X.shape[0], valores_unicos.shape[0]))
+        # Creamos una matriz de ceros para rellenarla despues
+        lista_one_hot = np.zeros((X.shape[0], valores_unicos.shape[0]))
         
-        # Para cada valor único, colocamos un 1 en la correspondiente columna de la matriz one-hot
+        # Se coloca un 1 por cada valor unico en su columna de la lista
         for j, valor_unico in enumerate(valores_unicos):
-            matriz_one_hot[np.where(X[:, i] == valor_unico), j] = 1
+            lista_one_hot[np.where(X[:, i] == valor_unico), j] = 1
         
-        # Agregamos la matriz one-hot a la lista
-        matrices_one_hot.append(matriz_one_hot)
+        # En la matriz guardamos cada lista rellenada
+        matrices_one_hot.append(lista_one_hot)
     
-    # Concatenamos todas las matrices one-hot a lo largo del eje de las columnas
     X_one_hot = np.concatenate(matrices_one_hot, axis=1)
     
     return X_one_hot
@@ -1226,32 +1223,43 @@ codifica_one_hot(Xc)
 
 # ----------------------
 
-
 # Aplicamos codificación one-hot a las características
 X_credito_one_hot = codifica_one_hot(X_credito)
 
 # Dividimos los datos en conjuntos de entrenamiento y prueba
 Xe_credito, Xp_credito, ye_credito, yp_credito = particion_entr_prueba(X_credito_one_hot, y_credito)
 
-# Creamos e inicializamos nuestro clasificador RL_OvR
-rl_credito_ovr = RL_OvR(rate=0.05, batch_tam=16)
 
-# Entrenamos el clasificador
-rl_credito_ovr.entrena(Xe_credito, ye_credito)
-
-# Evaluamos el rendimiento en el conjunto de entrenamiento y en el de prueba
-rendimiento_entrenamiento = rendimiento(rl_credito_ovr, Xe_credito, ye_credito)
-rendimiento_prueba = rendimiento(rl_credito_ovr, Xp_credito, yp_credito)
-
-print("Rendimiento en el conjunto de entrenamiento: ", rendimiento_entrenamiento)
-print("Rendimiento en el conjunto de prueba: ", rendimiento_prueba)
-
-# TODO: Ajuste de parametros, usar for anidados como ejercicio anterior
+mejor_rendimiento = 0
+mejor_rate = 0
+mejor_batch_tam = 0
+mejor_rate_decay = False
 
 
+# Búsqueda de parámetros
+for rate in [0.1, 0.01, 0.001]:
+    for batch_tam in [16, 32, 64, 128]:
+            for rate_decay in [True, False]:
 
+                # Crear y entrenar el modelo
+                rl_ovr = RL_OvR(rate=rate, batch_tam=batch_tam, rate_decay=rate_decay)
+                rl_ovr.entrena(Xe_credito, ye_credito)
+                    
+                # Evaluar rendimiento
+                rend = rendimiento_validacion_cruzada(RL_OvR,{"batch_tam":batch_tam,"rate":rate,"rate_decay":rate_decay}, Xe_credito,ye_credito,n=5)
+                print(f"\n rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")    
+               
+                # Actualizar mejores parámetros si es necesario
+                if rend > mejor_rendimiento:
+                    mejor_rendimiento = rend
+                    mejor_rate = rate
+                    mejor_batch_tam = batch_tam
 
+print(f"\n Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rendimiento: {mejor_rendimiento}")
 
+# Entrenamos el modelo con los mejores hiperparámetros encontrados
+rl_ovr = RL_OvR(rate=mejor_rate, batch_tam=mejor_batch_tam)
+rl_ovr.entrena(Xe_credito, ye_credito, salida_epoch=False)
 
 
 
@@ -1259,7 +1267,7 @@ print("Rendimiento en el conjunto de prueba: ", rendimiento_prueba)
 
 
 # ---------------------------------------------------------
-# 7.2) Clasificación de imágenes de dígitos escritos a mano
+# 8.2) Clasificación de imágenes de dígitos escritos a mano
 # ---------------------------------------------------------
 
 
@@ -1291,24 +1299,27 @@ print("Rendimiento en el conjunto de prueba: ", rendimiento_prueba)
 # --------------------------------------------------------------------------
 
 
-import numpy as np
+# -------------------------------
+# TIEMPO DE EJECUCION:
+# Aprox 1min 20s
+# -------------------------------
 
-# Funciones para leer los datos
+# Funciones auxiliares para lectura de ficheros
 def read_images(file_path):
     with open(file_path, 'r') as f:
-        images = f.read().split("\n\n")
+        lines = f.readlines()
         # Transforma el texto a una imagen binaria (28x28)
-        images = [np.array([[int(col != ' ') for col in row] for row in img.split("\n")]) for img in images if img]
-        # Aplana las imágenes (784,)
+        images = [np.array([[int(col != ' ') for col in row] for row in lines[i:i+28]]) for i in range(0, len(lines), 28)]
         images = [img.flatten() for img in images]
     return np.array(images)
+
 
 def read_labels(file_path):
     with open(file_path, 'r') as f:
         labels = np.array([int(label) for label in f.read().split("\n") if label])
     return labels
 
-# Cargar los datos de entrenamiento, validación y prueba
+# Carga de datos
 X_train = read_images("datos/digitdata/trainingimages")
 y_train = read_labels("datos/digitdata/traininglabels")
 
@@ -1318,25 +1329,45 @@ y_valid = read_labels("datos/digitdata/validationlabels")
 X_test = read_images("datos/digitdata/testimages")
 y_test = read_labels("datos/digitdata/testlabels")
 
-# Creamos e inicializamos nuestro clasificador RL_OvR
-rl_digits_ovr = RL_OvR(rate=0.01, batch_tam=16)
+# Mejores parametros encontrados (ver busqueda de hiperparametros abajo)
+rl_digits_ovr = RL_OvR(rate=0.1, batch_tam=32, rate_decay=False)
 
-# Entrenamos el clasificador
+# Entrenamiento
 rl_digits_ovr.entrena(X_train, y_train)
 
-# Evaluar el rendimiento en el conjunto de entrenamiento y de validación
+# Evaluacion
 rendimiento_entrenamiento = rendimiento(rl_digits_ovr, X_train, y_train)
 rendimiento_validacion = rendimiento(rl_digits_ovr, X_valid, y_valid)
 
-print("Rendimiento en el conjunto de entrenamiento: ", rendimiento_entrenamiento)
-print("Rendimiento en el conjunto de validación: ", rendimiento_validacion)
+
+# ---------------------------------
+
+# Búsqueda de hiperparámetros
+
+mejor_rendimiento = 0
+mejor_rate = 0
+mejor_batch_tam = 0
+mejor_rate_decay = False
 
 
-# Evaluar el rendimiento en el conjunto de prueba
-rendimiento_prueba = rendimiento(rl_digits_ovr, X_test, y_test)
+for rate in [0.1, 0.01, 0.001]:
+    for batch_tam in [16, 32, 64, 128]:
+            for rate_decay in [True, False]:
 
-print("Rendimiento en el conjunto de prueba: ", rendimiento_prueba)
-# TODO: fix
+                rl_digits_ovr = RL_OvR(rate=rate, batch_tam=batch_tam, rate_decay=rate_decay)
+                rl_digits_ovr.entrena(X_train, y_train)
+                    
+                rend = rendimiento(rl_digits_ovr, X_train, y_train)
+                print(f"\n rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")    
+               
+                if rend > mejor_rendimiento:
+                    mejor_rendimiento = rend
+                    mejor_rate = rate
+                    mejor_batch_tam = batch_tam
+
+print(f"\n Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {rate_decay},  rendimiento: {mejor_rendimiento}")
+# >>> Mejores parámetros encontrados: rate: 0.1, batch_tam: 32, rate_decay: False, rendimiento: 0.988
+
 
 
 
@@ -1418,54 +1449,81 @@ print("Rendimiento en el conjunto de prueba: ", rendimiento_prueba)
 # --------------- 
 
 
-import numpy as np
 from scipy.special import softmax
 
-class RL_Multinomial():
-    
+# Se implementa con la misma estructura que el RL tradicional, pero predecimos probabilidades 
+# de pertenecer a una de varias clases
+
+class RL_Multinomial:
     def __init__(self, rate=0.1, rate_decay=False, batch_tam=64):
         self.rate = rate
         self.rate_decay = rate_decay
         self.batch_tam = batch_tam
-        self.w = None
+        self.pesos = None
 
-    def entrena(self, X, y, n_epochs=100, salida_epoch=False):
-        n_samples, n_features = X.shape
-        n_outputs = len(np.unique(y))
+    def entrena(self, X, y, Xv=None, yv=None, n_epochs=100, salida_epoch=False, early_stopping=True):
+        self.clases = np.unique(y)
+        num_clases = len(self.clases)
+        num_caract = X.shape[1]
+        self.pesos = np.random.randn(num_clases, num_caract)
         
-        X_bias = np.c_[np.ones((n_samples, 1)), X] # Añade bias a X
-        self.w = np.zeros((n_features + 1, n_outputs)) # Inicializa los pesos
-        
+        mejor_EC = float('inf')
+        cuenta_paciencia = 0
+
         for epoch in range(n_epochs):
-            indices = np.random.permutation(n_samples)
-            X_b_shuffled = X_bias[indices]
-            y_shuffled = y[indices]
+            idx = np.random.permutation(X.shape[0])
+            X = X[idx]
+            y = y[idx]
             
-            for i in range(0, n_samples, self.batch_tam):
-                xi = X_b_shuffled[i:i+self.batch_tam]
-                yi = y_shuffled[i:i+self.batch_tam]
-
-                gradients = 1 / self.batch_tam * xi.T @ (softmax(xi @ self.w, axis=1) - np.eye(n_outputs)[yi])
-                self.w -= self.rate * gradients
-            
-            if salida_epoch and (epoch + 1) % 10 == 0:
-                loss = -np.mean(np.sum(np.eye(n_outputs)[yi] * np.log(softmax(xi @ self.w, axis=1)), axis=1))
-                print(f"Epoch {epoch + 1}, Loss: {loss}")
+            for i in range(0, X.shape[0], self.batch_tam):
+                X_mini, y_mini = X[i:i+self.batch_tam], y[i:i+self.batch_tam]
                 
-            if self.rate_decay:
-                self.rate *= 0.9
-            
+                y_pred = self.clasifica_prob(X_mini)
+                y_mini_one_hot = np.eye(num_clases)[y_mini]
+                error = y_mini_one_hot - y_pred
+                
+                grad = np.dot(error.T, X_mini)
+                
+                if self.rate_decay:
+                    self.rate = self.rate * (1/(1 + epoch))
+                    
+                self.pesos += self.rate * grad
+
+            if salida_epoch or early_stopping:
+                EC_train = self.entropia_cruzada(y, self.clasifica_prob(X))
+                if salida_epoch:
+                    print(f"Epoch {epoch}, EC: {EC_train}, Rendimiento: {rendimiento(self, X, y)}")
+                
+                if early_stopping:
+                    if Xv is not None and yv is not None:
+                        EC_val = self.entropia_cruzada(yv, self.clasifica_prob(Xv))
+                        if EC_val < mejor_EC:
+                            mejor_EC = EC_val
+                            cuenta_paciencia = 0
+                        else:
+                            cuenta_paciencia += 1
+                            if cuenta_paciencia >= self.paciencia:
+                                print("Parada temprana")
+                                return
+                
+    # Clasifica_prob ahora devuelve una probabilidad en softmax
     def clasifica_prob(self, X):
-        X_bias = np.c_[np.ones((X.shape[0], 1)), X]
-        return softmax(X_bias @ self.w, axis=1)
+        if self.pesos is None:
+            raise ClasificadorNoEntrenado("El clasificador no ha sido entrenado.")
+        return softmax(np.dot(X, self.pesos.T), axis=1)
     
+    # Devolvemos la clase con probabilidad maxima
     def clasifica(self, X):
         probas = self.clasifica_prob(X)
         return np.argmax(probas, axis=1)
+    
+    def entropia_cruzada(self, y, y_pred):
+        y_one_hot = np.eye(len(self.clases))[y]
+        return -np.sum(y_one_hot * np.log(y_pred))
 
-rl_iris_m=RL_Multinomial(rate=0.001,batch_tam=8)
 
-rl_iris_m.entrena(Xe_iris,ye_iris,n_epochs=50)
+rl_iris_m=RL_Multinomial(rate=0.01,batch_tam=8)
+rl_iris_m.entrena(Xe_iris,ye_iris,n_epochs=50, salida_epoch=True)
 
 rendimiento(rl_iris_m,Xe_iris,ye_iris)
 # 0.9732142857142857
