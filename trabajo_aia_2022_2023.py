@@ -47,7 +47,6 @@
 
 from carga_datos import *
 import numpy as np
-import matplotlib.pyplot as plt
 
 # *****************************************
 # CONJUNTOS DE DATOS A USAR EN ESTE TRABAJO
@@ -227,7 +226,7 @@ def testEj1():
     clasesE, countE = np.unique(ye_votos,return_counts=True)
     clasesP, countP = np.unique(yp_votos,return_counts=True)
 
-    print("##->              Datos de Votos\n")
+    print("->              Datos de Votos\n")
     print("   Proporciones      - Original: {0} - Entrenamiento: {1} - Prueba: {2}".format(y_votos.shape[0],ye_votos.shape[0],yp_votos.shape[0]), "\n")
     print("   Conjunto Original - clases:{0} - Nº de ejemplos: {1} - Distribución: {2}    ".format(clases, count, (count / np.sum(count)) * 100))
     print("   Entrenamiento     - clases:{0} - Nº de ejemplos: {1} - Distribución: {2}    ".format(clasesE, countE, (countE / np.sum(countE)) * 100))
@@ -240,7 +239,7 @@ def testEj1():
     clasesV, countV = np.unique(yv_cancer,return_counts=True)
 
 
-    print("##->              Datos de Cancer\n")
+    print("->              Datos de Cancer\n")
     print("   Proporciones      - Original: {0} - Entrenamiento: {1}    - Prueba: {2}".format(y_cancer.shape[0],ye_cancer.shape[0],yp_cancer.shape[0]), "\n")
     print("   Conjunto Original - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clases, count, (count / np.sum(count)) * 100))
     print("   Entr y Val        - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesEv, countEv, (countEv / np.sum(countEv)) * 100))
@@ -253,14 +252,13 @@ def testEj1():
     clasesE, countE = np.unique(ye_credito,return_counts=True)
     clasesP, countP = np.unique(yp_credito,return_counts=True)
 
-    print("##->              Datos de Creditos\n")
+    print("->              Datos de Creditos\n")
     print("   Proporciones      - Original: {0} - Entrenamiento: {1}    - Prueba: {2}".format(y_cancer.shape[0],ye_cancer.shape[0],yp_cancer.shape[0]), "\n")
     print("   Conjunto Original - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clases, count, (count / np.sum(count)) * 100))
     print("   Entrenamiento     - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesE, countE, (countE / np.sum(countE)) * 100))
     print("   Prueba            - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesP, countP, (countP / np.sum(countP)) * 100),"\n")
 
-# testEj1()
-
+testEj1()
 
 # ===========================
 # EJERCICIO 2: NORMALIZADORES
@@ -377,7 +375,7 @@ def testEj2_1():
     print("- Media   {0}\n- Desviaciación típica   {1}\n".format(np.mean(X_normalizado), np.std(X_normalizado, axis = 0)))
 
 
-#testEj2_1()
+# testEj2_1()
 
 # ------------------------
 # 2.2) Normalizador MinMax
@@ -452,6 +450,16 @@ def testEj2_2():
 
 
 testEj2_2()
+
+
+
+
+
+
+
+
+
+
 # ===========================================
 # EJERCICIO 3: REGRESIÓN LOGÍSTICA MINI-BATCH
 # ===========================================
@@ -661,30 +669,23 @@ class RegresionLogisticaMiniBatch:
         self.pesos = None
         self.seed = random_seed
 
-    
     def entrena(self, X, y, Xv=None, yv=None, n_epochs=100, salida_epoch=False,
                  early_stopping=False, paciencia=3):
             # Las clases están dadas por los valores de y, positiva en 2º lugar como es definida en los datos
             self.clases = np.unique(y)
             num_caract = X.shape[1]
-
-            np.random.seed(self.seed)
             self.pesos = np.random.randn(num_caract)
 
             mejor_EC = float('inf')
             cuenta_paciencia = 0
-            
             # Calcular e imprimir EC y rendimiento iniciales
             if salida_epoch:
+                
                 EC_inicial = np.sum(self.entropia_cruzada(y,self.clasifica(X)))
                 rend_inicial = rendimiento(self, X, y)
                 print(f"Inicialmente, en entrenamiento EC: {EC_inicial}, rendimiento: {rend_inicial}")
-                if Xv is not None and yv is not None:
-                            EC_val =   np.sum(self.entropia_cruzada(yv,self.clasifica(Xv)))
-                            rend_val = rendimiento(self, Xv, yv)
-                            print(f"Inicialmente, en validación    EC: {EC_val}, rendimiento: {rend_val}")
 
-            for epoch in range(1, n_epochs):
+            for epoch in range(n_epochs):
                  # Barajar los datos al inicio de cada época
                 idx = np.random.permutation(X.shape[0])
                 X = X[idx]
@@ -692,7 +693,7 @@ class RegresionLogisticaMiniBatch:
                 # De 0 a tam_X, saltando de batch en batch
                 for i in range(0, X.shape[0], self.batch_tam):
                     X_mini, y_mini = X[i:i+self.batch_tam], y[i:i+self.batch_tam]
-                    grad = -np.dot(X_mini.T, (y_mini - self.clasifica_prob(X_mini))) 
+                    grad = np.dot(X_mini.T, (y_mini - self.clasifica_prob(X_mini) ))
                     
                     # Actualizacion de tasa de aprendizaje  
                     if self.rate_decay:
@@ -702,7 +703,6 @@ class RegresionLogisticaMiniBatch:
                     self.pesos += self.rate * grad
 
                 if salida_epoch or early_stopping:
-                    
                     EC_train = np.sum(self.entropia_cruzada(y,self.clasifica(X)))
                     if salida_epoch:
                         rend = rendimiento(self,X, y)
@@ -731,21 +731,24 @@ class RegresionLogisticaMiniBatch:
         if self.pesos is None:
             raise ClasificadorNoEntrenado("El clasificador no ha sido entrenado.")
         z = np.dot(X, self.pesos)
+        # expit(z) equivale a sigmoide(z)
         return sigmoide(z)
     
 
     def clasifica(self, X):
         return np.where(self.clasifica_prob(X) >= 0.5, self.clases[1], self.clases[0])
     
-    
+        
     def entropia_cruzada(self, y,y_pred):
         epsilon = 0.0000000001
         return (-y * np.log(y_pred + epsilon) - (1 - y) * np.log(1 - y_pred + epsilon))
     
 
-
-lr_cancer=RegresionLogisticaMiniBatch(rate=0.1,rate_decay=True, random_seed=0)
+lr_cancer=RegresionLogisticaMiniBatch(rate=0.1,rate_decay=True, random_seed=1)
 lr_cancer.entrena(Xe_cancer_n,ye_cancer,Xv_cancer_n,yv_cancer,salida_epoch=True,early_stopping=True)
+
+
+
 
 
 
