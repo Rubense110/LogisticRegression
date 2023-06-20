@@ -1000,87 +1000,7 @@ def testEj5():
         # Como los datos de las películas de IMDB ya están vectorizados no es necesario hacer nada
         Ajusta_parametros(X_train_imdb, y_train_imdb, X_test_imdb, y_test_imdb)
 
-
 testEj5()
-
-raise
-# ----------------------------
-# - Cáncer de mama 
-# ----------------------------
-
-def aplica_cancer():
-
-    mejor_rendimiento = 0
-    mejor_rate = 0
-    mejor_batch_tam = 0
-    mejor_rate_decay = False
-
-    # Búsqueda de parámetros
-    for rate in [0.1, 0.01, 0.001]:
-        for batch_tam in [16, 32, 64, 128]:
-            for rate_decay in [True, False]:
-                # Crear y entrenar el modelo
-                lr = RegresionLogisticaMiniBatch(rate=rate, batch_tam=batch_tam, rate_decay=rate_decay)
-                lr.entrena(Xe_cancer_n, ye_cancer, salida_epoch=False)
-                
-                # Evaluar rendimiento
-                rend = rendimiento_validacion_cruzada(RegresionLogisticaMiniBatch,{"batch_tam":batch_tam,"rate":rate,"rate_decay":rate_decay}, Xe_cancer_n,ye_cancer,n=5)
-                print(f"\n rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")
-                
-                # Actualizar mejores parámetros si es necesario
-                if rend > mejor_rendimiento:
-                    mejor_rendimiento = rend
-                    mejor_rate = rate
-                    mejor_batch_tam = batch_tam
-                    mejor_rate_decay = rate_decay
-
-    print(f"Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {mejor_rate_decay}, rendimiento: {mejor_rendimiento} \n")
-
-    lr = RegresionLogisticaMiniBatch(rate=mejor_rate, batch_tam=mejor_batch_tam, rate_decay=mejor_rate_decay)
-    lr.entrena(Xe_cancer_n, ye_cancer, early_stopping=True, salida_epoch=True)
-
-# ----------------------------
-# - Votos de congresistas US
-# ----------------------------
-
-Xe_votos,Xp_votos,ye_votos,yp_votos=particion_entr_prueba(X_votos,y_votos,test=1/3)
-normst_votos=NormalizadorStandard()
-normst_votos.ajusta(Xe_votos)
-Xe_votos_n=normst_votos.normaliza(Xe_votos)
-normst_votos.ajusta(Xp_votos)
-Xp_votos_n=normst_votos.normaliza(Xp_votos)
-
-mejor_rendimiento = 0
-mejor_rate = 0
-mejor_batch_tam = 0
-mejor_rate_decay = False
-# TODO: Arreglar el fallo que impide entrenar al modelo
-
-# Búsqueda de parámetros
-for rate in [0.1, 0.01, 0.001]:
-    for batch_tam in [16, 32, 64, 128]:
-        for rate_decay in [True, False]:
-            # Crear y entrenar el modelo
-            lr = RegresionLogisticaMiniBatch(rate=rate, batch_tam=batch_tam, rate_decay=rate_decay)
-            lr.entrena(Xe_votos_n, ye_votos, salida_epoch=False)
-            
-            # Evaluar rendimiento
-            rend = rendimiento_validacion_cruzada(RegresionLogisticaMiniBatch,{"batch_tam":batch_tam,"rate":rate,"rate_decay":rate_decay}, Xe_votos_n,ye_votos,n=5)
-            print(f"\n rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")
-            
-            # Actualizar mejores parámetros si es necesario
-            if rend > mejor_rendimiento:
-                mejor_rendimiento = rend
-                mejor_rate = rate
-                mejor_batch_tam = batch_tam
-                mejor_rate_decay = rate_decay
-
-print(f"Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {mejor_rate_decay}, rendimiento: {mejor_rendimiento} \n")
-
-lr = RegresionLogisticaMiniBatch(rate=mejor_rate, batch_tam=mejor_batch_tam, rate_decay=mejor_rate_decay)
-lr.entrena(Xe_votos_n, ye_votos, early_stopping=True, salida_epoch=True)
-
-raise
 
 # =====================================================
 # EJERCICIO 6: CLASIFICACIÓN MULTICLASE CON ONE vs REST
@@ -1634,6 +1554,7 @@ rendimiento(rl_iris_m,Xp_iris,yp_iris)
 #testEj2_2()
 #test_Ej3()
 #testEj4()
+#testEj5()
 
 
 ##################################################################################
