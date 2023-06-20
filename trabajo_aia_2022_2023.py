@@ -746,7 +746,7 @@ class RegresionLogisticaMiniBatch:
         epsilon = 0.0000000001
         return (-y * np.log(y_pred + epsilon) - (1 - y) * np.log(1 - y_pred + epsilon))
     
-def test_Ej3():
+def testEj3():
 
     lr_cancer=RegresionLogisticaMiniBatch(rate=0.1,rate_decay=True, random_seed=1)
     print("\n###########################################")
@@ -931,7 +931,7 @@ def testEj4():
 # el tamaño de los conjuntos de validación y prueba, que por defecto son 0.2
 # también podemos especificar el normalizador, por si queremos usar uno que no sea el Standard
 
-def Ajusta_parametros(Xev,yev,Xp,yp,val=0.2):
+def ajusta_parametros(Xev,yev,Xp,yp,val=0.2):
 
     # Hacemos la separación de los datos, por no complicar el código, forzamos que haya que
     # especificar conjunto de validación 
@@ -986,21 +986,20 @@ def testEj5():
 
         # Ya tenemos estos datos separados y normalizados de ejercicios anteriores
         print("##->              Datos de Cancer\n")
-        Ajusta_parametros(Xe_cancer_n, ye_cancer, Xp_cancer_n, yp_cancer)
+        ajusta_parametros(Xe_cancer_n, ye_cancer, Xp_cancer_n, yp_cancer)
 
         # regresión logística binaria necesita que los valores de clasif sean 0 y 1,
         #  hacemos la conversión con np.where()
+
         print("##->              Datos de Votos\n")
         y_votos_lr = np.where(y_votos == y_votos[0], 0, 1)
-        Xe_votos,ye_votos,Xp_votos,yp_votos=particion_entr_prueba(X_votos,y_votos_lr,test=0.2)
+        Xe_votos,Xp_votos,ye_votos,yp_votos=particion_entr_prueba(X_votos,y_votos_lr,test=0.2)
         # No es necesario normalizar este dataset
-        Ajusta_parametros(Xe_votos,Xp_votos,ye_votos,yp_votos)
+        ajusta_parametros(Xe_votos,ye_votos,Xp_votos,yp_votos)
        
         print("##->              Datos de Películas\n")
         # Como los datos de las películas de IMDB ya están vectorizados no es necesario hacer nada
-        Ajusta_parametros(X_train_imdb, y_train_imdb, X_test_imdb, y_test_imdb)
-
-
+        ajusta_parametros(X_train_imdb, y_train_imdb, X_test_imdb, y_test_imdb)
 
 # =====================================================
 # EJERCICIO 6: CLASIFICACIÓN MULTICLASE CON ONE vs REST
@@ -1195,7 +1194,7 @@ def codifica_one_hot(X):
 
 # --------------------------------
 # Test
-def TestEj7():
+def testEj7():
     print("\n###########################################")
     print("############### EJERCICIO 6 ###############")
     print("###########################################\n")
@@ -1226,46 +1225,70 @@ def TestEj7():
 
 # ----------------------
 
-# Aplicamos codificación one-hot a las características
-X_credito_one_hot = codifica_one_hot(X_credito)
+# Para estas pruebas usaremos una versión ligeramente modificada de la utilizada en el ejercicio 5,
+# de igual forma que con la otra haremos una búsqueda exhaustiva de parámetros, escogeremos los mejores,
+# entrenaremos con ellos, y daremos el rendimiento en el conjunto de prueba
 
-# Dividimos los datos en conjuntos de entrenamiento y prueba
-Xe_credito, Xp_credito, ye_credito, yp_credito = particion_entr_prueba(X_credito_one_hot, y_credito)
+# Como para el ejercicio 8.2 se nos pide que NO usemos validación cruzada también usaremos un parametro para 
+# decidir si emplearla o usar la func. de rendimiento que se nos da
 
+def ajusta_parametros_OvR(Xe,ye,Xp,yp,crossval=True):
 
-mejor_rendimiento = 0
-mejor_rate = 0
-mejor_batch_tam = 0
-mejor_rate_decay = False
+    # Estos valores se irán actualizando para conservar los que den mayor rendimiento
+    mejor_rendimiento = 0
+    mejor_rate = 0
+    mejor_batch_tam = 0
+    mejor_rate_decay = False
 
+    print("\n-------")
+    print("Comenzando búsqueda exhaustiva de parámetros")
+    print("-------\n")
 
-# Búsqueda de parámetros
-for rate in [0.1, 0.01, 0.001]:
-    for batch_tam in [16, 32, 64, 128]:
+    # Comenzamos la búsqueda
+    for l_rate in [0.1, 0.01, 0.001]:
+        for batch_tam in [16, 32, 64, 128]:
             for rate_decay in [True, False]:
+                # Creamos y entrenamos el modelo
+                rl_ovr = RL_OvR(rate=l_rate, batch_tam=batch_tam, rate_decay=rate_decay)
+                rl_ovr.entrena(Xe, ye)
 
-                # Crear y entrenar el modelo
-                rl_ovr = RL_OvR(rate=rate, batch_tam=batch_tam, rate_decay=rate_decay)
-                rl_ovr.entrena(Xe_credito, ye_credito)
-                    
-                # Evaluar rendimiento
-                rend = rendimiento_validacion_cruzada(RL_OvR,{"batch_tam":batch_tam,"rate":rate,"rate_decay":rate_decay}, Xe_credito,ye_credito,n=5)
-                print(f"\n rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")    
-               
-                # Actualizar mejores parámetros si es necesario
+                # Evaluamos su rendimiento
+                if crossval: 
+                    rend = rendimiento_validacion_cruzada(RL_OvR,{"batch_tam":batch_tam,"rate":l_rate,"rate_decay":rate_decay}, Xe,ye,n=5) 
+                else:
+                    rend = rendimiento(rl_ovr, Xe, ye)
+                print(f"\n rate: {l_rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")    
+
+                # Actualizamos mejores parámetros si es necesario
                 if rend > mejor_rendimiento:
                     mejor_rendimiento = rend
-                    mejor_rate = rate
+                    mejor_rate = l_rate
                     mejor_batch_tam = batch_tam
 
-print(f"\n Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rendimiento: {mejor_rendimiento}")
+    print("\n-------")
+    print(f"Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {mejor_rate_decay}, rendimiento: {mejor_rendimiento}")
+    print("\nEntrenando con los mejores parámetros: ")
+    print("-------\n")
 
-# Entrenamos el modelo con los mejores hiperparámetros encontrados
-rl_ovr = RL_OvR(rate=mejor_rate, batch_tam=mejor_batch_tam)
-rl_ovr.entrena(Xe_credito, ye_credito, salida_epoch=False)
+    # Una vez tenemos los mejores Parámetros entrenaremos un modelo con estos, y daremos su rendimiento sobre el cjto de prueba
+    rl_ovr_best = RL_OvR(rate=mejor_rate, batch_tam=mejor_batch_tam)
+    rl_ovr_best.entrena(Xe, ye, salida_epoch=False)
 
+    print("\n-------")
+    print(f"Rendimiento sobre Conjunto de Prueba: {rendimiento(rl_ovr_best, Xp, yp)}")
+    print("-------\n")
 
+def testEj8_1():
 
+    print("\n###########################################")
+    print("############## EJERCICIO 8.1 ##############")
+    print("###########################################\n")
+
+    print("##->              Datos de Créditos\n")
+    # Aplicamos codificación one-hot utilizando el ejercicio 7 y dividiremos los datos como siempre
+    X_credito_one_hot = codifica_one_hot(X_credito)
+    Xe_credito, Xp_credito, ye_credito, yp_credito = particion_entr_prueba(X_credito_one_hot, y_credito)
+    ajusta_parametros_OvR(Xe_credito, ye_credito, Xp_credito, yp_credito)
 
 
 
@@ -1307,84 +1330,71 @@ rl_ovr.entrena(Xe_credito, ye_credito, salida_epoch=False)
 # Aprox 1min 20s
 # -------------------------------
 
-# Funciones auxiliares para lectura de ficheros
-def read_images(file_path):
+# Para leer los digitos necesitaremos poder transformarlos en arrays de numpy de alguna forma,
+# sabemos que los dígitos tiene una forma de 28x28 píxeles, asi que iteraremos las líneas de fichero
+# con incrementos de 28 de forma que en cada iteración tendremos un dígito.
+
+def lee_imagenes(file_path):
     with open(file_path, 'r') as f:
-        lines = f.readlines()
-        # Transforma el texto a una imagen binaria (28x28)
-        images = [np.array([[int(col != ' ') for col in row] for row in lines[i:i+28]]) for i in range(0, len(lines), 28)]
-        images = [img.flatten() for img in images]
-    return np.array(images)
+        lineas = f.readlines()
 
+        # Para cada iteración entonces crearemos una array 28x28 y haremos una codificación tan simple como que si 
+        # el caracter es un espacio tendrá un 0 en el array, y si tiene algo, un 1, de esta forma tenemos nuestras imágenes
+        # en formato de arrays de numpy
+        imagenes = [np.array([[int(col != ' ') for col in row] for row in lineas[i:i+28]]) for i in range(0, len(lineas), 28)]
 
-def read_labels(file_path):
+        # ahora, estos arrays son bidimensionales (28x28) para poder entrenar a nuestro clasificador tendremos que aplanarlos y
+        # convertirlos en vectores
+        imagenes = [img.flatten() for img in imagenes]
+
+    return np.array(imagenes)
+
+# Para las etiquetas es mucho mas sencillo, simplemente leemos el fichero y convertimos todo su contenido en un array unidimensional
+# utilizamos los saltos de línea \n para separar cada etiqueta, también nos aseguramos de no seleccionar elementos vacios.
+
+def lee_etiquetas(file_path):
     with open(file_path, 'r') as f:
-        labels = np.array([int(label) for label in f.read().split("\n") if label])
-    return labels
-
-# Carga de datos
-X_train = read_images("datos/digitdata/trainingimages")
-y_train = read_labels("datos/digitdata/traininglabels")
-
-X_valid = read_images("datos/digitdata/validationimages")
-y_valid = read_labels("datos/digitdata/validationlabels")
-
-X_test = read_images("datos/digitdata/testimages")
-y_test = read_labels("datos/digitdata/testlabels")
-
-# Mejores parametros encontrados (ver busqueda de hiperparametros abajo)
-rl_digits_ovr = RL_OvR(rate=0.1, batch_tam=32, rate_decay=False)
-
-# Entrenamiento
-rl_digits_ovr.entrena(X_train, y_train)
-
-# Evaluacion
-rendimiento_entrenamiento = rendimiento(rl_digits_ovr, X_train, y_train)
-rendimiento_validacion = rendimiento(rl_digits_ovr, X_valid, y_valid)
+        etiquetas = np.array([int(label) for label in f.read().split("\n") if label])
+    return etiquetas
 
 
-# ---------------------------------
+# Cargamos los datos, ya vienen divididos
+# No usaremos los de validacion pero podemos cargarlos igual
 
-# Búsqueda de hiperparámetros
+Xe_digitos = lee_imagenes("datos/digitdata/trainingimages")
+ye_digitos = lee_etiquetas("datos/digitdata/traininglabels")
 
-mejor_rendimiento = 0
-mejor_rate = 0
-mejor_batch_tam = 0
-mejor_rate_decay = False
+Xv_digitos = lee_imagenes("datos/digitdata/validationimages")
+yv_digitos = lee_etiquetas("datos/digitdata/validationlabels")
 
+Xp_digitos = lee_imagenes("datos/digitdata/testimages")
+yp_digitos = lee_etiquetas("datos/digitdata/testlabels")
 
-for rate in [0.1, 0.01, 0.001]:
-    for batch_tam in [16, 32, 64, 128]:
-            for rate_decay in [True, False]:
+# dado a que puede tardar un poco en ejecurar toda la búsqueda de parámetros, hemos seleccionado el que nos 
+# sale a nosotros tras ejecutarlo para ahorrar tiempo, pero recomendamos ejecutar el código 
+# (tarda 1mim 30secs aprox por entrenamiento)
 
-                rl_digits_ovr = RL_OvR(rate=rate, batch_tam=batch_tam, rate_decay=rate_decay)
-                rl_digits_ovr.entrena(X_train, y_train)
-                    
-                rend = rendimiento(rl_digits_ovr, X_train, y_train)
-                print(f"\n rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")    
-               
-                if rend > mejor_rendimiento:
-                    mejor_rendimiento = rend
-                    mejor_rate = rate
-                    mejor_batch_tam = batch_tam
-
-print(f"\n Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {rate_decay},  rendimiento: {mejor_rendimiento}")
 # >>> Mejores parámetros encontrados: rate: 0.1, batch_tam: 32, rate_decay: False, rendimiento: 0.988
 
+# en la funcion de test se puede mediante un parametro escoger si recortar o no el dataset de entrenamiento
+# esto reduce drásticamente el tiempo que tarda en hacer la búsqueda de parámetros, pero evidentemente también
+# afecta al rendimiento del modelo
+
+def testEj8_2(recorta=True):
+
+    print("\n###########################################")
+    print("############## EJERCICIO 8.2 ##############")
+    print("###########################################\n")
+
+    print("##->              Datos de Dígitos\n")
+    # Aplicamos codificación one-hot utilizando el ejercicio 7 y dividiremos los datos como siempre
+    if recorta: 
+        ajusta_parametros_OvR(Xe_digitos[:1000], ye_digitos[:1000], Xp_digitos, yp_digitos, crossval=False)
+    else:
+        ajusta_parametros_OvR(Xe_digitos, ye_digitos, Xp_digitos, yp_digitos, crossval=False)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+testEj8_2()
 
 # =========================================================================
 # EJERCICIO OPCIONAL PARA SUBIR NOTA: 
@@ -1543,7 +1553,8 @@ rendimiento(rl_iris_m,Xp_iris,yp_iris)
 #testEj4()
 #testEj5()
 #testEj6()
-#TestEj7()
+#testEj7()
+#testEj8_1()
 
 ##################################################################################
 
