@@ -714,7 +714,6 @@ class RegresionLogisticaMiniBatch:
                             print(f"\t\ten validación    EC: {EC_val}, rendimiento : {rend_val}\n")
 
                     if early_stopping:
-                        
                         #No se usa validacion cuando hay early stopping: Xv e yv son resp. X e y.
                         Xv = X
                         yv = y
@@ -1394,7 +1393,7 @@ def testEj8_2(recorta=True):
         ajusta_parametros_OvR(Xe_digitos, ye_digitos, Xp_digitos, yp_digitos, crossval=False)
 
 
-testEj8_2()
+
 
 # =========================================================================
 # EJERCICIO OPCIONAL PARA SUBIR NOTA: 
@@ -1468,13 +1467,17 @@ from scipy.special import softmax
 # de pertenecer a una de varias clases
 
 class RL_Multinomial:
+    # Definimos el constructor prácticamente igual al de RL anterior
     def __init__(self, rate=0.1, rate_decay=False, batch_tam=64):
         self.rate = rate
         self.rate_decay = rate_decay
         self.batch_tam = batch_tam
         self.pesos = None
 
-    def entrena(self, X, y, Xv=None, yv=None, n_epochs=100, salida_epoch=False, early_stopping=True):
+    def entrena(self, X, y, Xv=None, yv=None, n_epochs=100, salida_epoch=False, early_stopping=True, paciencia = 3):
+        
+        # el comienzo es casi igual que al clasif binario
+        # nos interesa ahora el número de clases (antes eran 2)
         self.clases = np.unique(y)
         num_clases = len(self.clases)
         num_caract = X.shape[1]
@@ -1483,18 +1486,32 @@ class RL_Multinomial:
         mejor_EC = float('inf')
         cuenta_paciencia = 0
 
+        if salida_epoch:
+            EC_inicial =  self.entropia_cruzada(y, self.clasifica_prob(X))
+            rend_inicial = rendimiento(self, X, y)
+            print("\t-------")
+            print(f"\tInicialmente, en entrenamiento EC: {EC_inicial}, rendimiento: {rend_inicial}\n")
+
+        # Empezamos a entrenar, para cada epoch permutaremos los datos para añadir aleatoriedad
         for epoch in range(n_epochs):
             idx = np.random.permutation(X.shape[0])
             X = X[idx]
             y = y[idx]
             
+            # Iteraremos desde el primer elemento al ultimo, saltando según el
+            # tamaño de los mini batches
             for i in range(0, X.shape[0], self.batch_tam):
                 X_mini, y_mini = X[i:i+self.batch_tam], y[i:i+self.batch_tam]
                 
+                # Obtenemos las probabilidades de clasificacion para el minibatch
+                # Hacemos codificación One-hot para las etiquetas con np.eye() 
+                # y calculamos el error
                 y_pred = self.clasifica_prob(X_mini)
                 y_mini_one_hot = np.eye(num_clases)[y_mini]
                 error = y_mini_one_hot - y_pred
                 
+                # Actualizacion de pesos por descenso del gradiente
+                # si se ha habilitado, también bajará el learning rate
                 grad = np.dot(error.T, X_mini)
                 
                 if self.rate_decay:
@@ -1502,21 +1519,29 @@ class RL_Multinomial:
                     
                 self.pesos += self.rate * grad
 
+            # De forma muy similar al ejercicio 3 mostramos por consola los resultados
+            # que se van obteniendo
             if salida_epoch or early_stopping:
                 EC_train = self.entropia_cruzada(y, self.clasifica_prob(X))
                 if salida_epoch:
-                    print(f"Epoch {epoch}, EC: {EC_train}, Rendimiento: {rendimiento(self, X, y)}")
+                    print("\t-------")
+                    print(f"\tEpoch {epoch}\n\ten entrenamiento EC: {EC_train}, Rendimiento: {rendimiento(self, X, y)}")
                 
+                # Empleamos los conjuntos de validación sólo si early_stopping = True
+                # el proceso es el mismo que en el clasif binario
                 if early_stopping:
                     if Xv is not None and yv is not None:
                         EC_val = self.entropia_cruzada(yv, self.clasifica_prob(Xv))
+                        
+                        print(f"\ten validación    EC: {EC_val}, Rendimiento: {rendimiento(self, Xv, yv)}")
                         if EC_val < mejor_EC:
                             mejor_EC = EC_val
                             cuenta_paciencia = 0
                         else:
                             cuenta_paciencia += 1
-                            if cuenta_paciencia >= self.paciencia:
-                                print("Parada temprana")
+                            if cuenta_paciencia >= paciencia:
+                                print("\t-------")
+                                print("\tPARADA TEMPRANA\n")
                                 return
                 
     # Clasifica_prob ahora devuelve una probabilidad en softmax
@@ -1530,21 +1555,43 @@ class RL_Multinomial:
         probas = self.clasifica_prob(X)
         return np.argmax(probas, axis=1)
     
+    # nótese que hacemos la suma de las entropías cruzadas aquí por que involucra
+    # más de 2 clases
     def entropia_cruzada(self, y, y_pred):
         y_one_hot = np.eye(len(self.clases))[y]
         return -np.sum(y_one_hot * np.log(y_pred))
 
+def testEj9():
 
-rl_iris_m=RL_Multinomial(rate=0.01,batch_tam=8)
-rl_iris_m.entrena(Xe_iris,ye_iris,n_epochs=50, salida_epoch=True)
+    rl_iris_m=RL_Multinomial(rate=0.01,batch_tam=8)
+    print("\n###########################################")
+    print("############### EJERCICIO 9 ###############")
+    print("###########################################\n")
 
-rendimiento(rl_iris_m,Xe_iris,ye_iris)
-# 0.9732142857142857
+    print("##->              Datos de Iris\n")
+    Xe_iris,Xp_iris,ye_iris,yp_iris=particion_entr_prueba(X_iris,y_iris)
+    Xe_iris,Xv_iris,ye_iris,yv_iris=particion_entr_prueba(Xe_iris,ye_iris)
 
-rendimiento(rl_iris_m,Xp_iris,yp_iris)
-# >>> 0.9736842105263158
+    rl_iris_m.entrena(Xe_iris,ye_iris,Xv_iris,yv_iris,n_epochs=50, salida_epoch=True)
+
+    predicciones = rl_iris_m.clasifica(Xp_iris[0:3])
+    probabilidades = rl_iris_m.clasifica_prob(Xp_iris[0:3])
+    rendCEntren = rendimiento(rl_iris_m,Xe_iris,ye_iris)
+    rendCPrueba = rendimiento(rl_iris_m,Xp_iris,yp_iris)
+
+    print("\t- Predicciones\n\t   Ejemplo 24: {0}\n\t   Ejemplo 25: {1}\n\t   Ejemplo 26: {2}\n ".format(predicciones[0],predicciones[1],predicciones[2]))
+    print("\t- Valores Reales\n\t   Ejemplo 24: {0}\n\t   Ejemplo 25: {1}\n\t   Ejemplo 26: {2}\n ".format(yp_cancer[0:3][0],yp_cancer[0:3][1],yp_cancer[0:3][2]))
+    print("\t- Probabilidad de pertenecer a cad clase:")
+    print("\t   Ejemplo : {0}\n\t   Ejemplo 2: {1}\n\t   Ejemplo 21: {2}\n ".format(probabilidades[0],probabilidades[1],probabilidades[2]))
+    print("\t- Rendimiento\n\t   Entrenamiento: {0}\n\t   Prueba: {1}".format(rendCEntren,rendCPrueba))
+    
+
+
+
+
 
 ####################################### TESTING ##################################
+# Descomentar el test que se quiera realizar.
 
 #testEj1()
 #testEj2_1()
@@ -1555,6 +1602,8 @@ rendimiento(rl_iris_m,Xp_iris,yp_iris)
 #testEj6()
 #testEj7()
 #testEj8_1()
+#testEj8_2()
+testEj9()
 
 ##################################################################################
 
