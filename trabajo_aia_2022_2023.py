@@ -707,11 +707,11 @@ class RegresionLogisticaMiniBatch:
                     if salida_epoch:
                         rend = rendimiento(self,X, y)
                         print("\t-------")
-                        print(f"\tEpoch {epoch}, en entrenamiento EC: {EC_train}, rendimiento: {rend}")
+                        print(f"\tEpoch {epoch}\n\t\ten entrenamiento EC: {EC_train}, rendimiento: {rend}")
                         if Xv is not None and yv is not None:
                             EC_val =   np.sum(self.entropia_cruzada(yv,self.clasifica(Xv)))
                             rend_val = rendimiento(self, Xv, yv)
-                            print(f"\t\t en validación    EC: {EC_val}, rendimiento : {rend_val}\n")
+                            print(f"\t\ten validación    EC: {EC_val}, rendimiento : {rend_val}\n")
 
                     if early_stopping:
                         
@@ -725,9 +725,10 @@ class RegresionLogisticaMiniBatch:
                         else:
                             cuenta_paciencia += 1
                             if cuenta_paciencia >= paciencia:
-                                print("\t-------")
-                                print("\tPARADA TEMPRANA\n")
-                                return
+                                if salida_epoch:
+                                    print("\t-------")
+                                    print("\tPARADA TEMPRANA\n")
+                                    return
 
     def clasifica_prob(self, X):
         if self.pesos is None:
@@ -835,12 +836,12 @@ def test_Ej3():
 
 #------------------------------------------------------------------------------
 
-def rendimiento_validacion_cruzada(clase_clasificador, params, X, y, n=5):
+def rendimiento_validacion_cruzada(clase_clasificador, params, X, y, n=5, verbose=True):
     tam_X = X.shape[0]
-    # Crear índices para estratificación
+    # Crear índices para la estratificación
     indices = np.arange(tam_X)
     np.random.shuffle(indices)
-    # Tamaño de una sola partición
+    # Tamaño de cada particion
     tam_part = tam_X // n
     rendimientos = []
     indices_test = list()
@@ -869,11 +870,11 @@ def rendimiento_validacion_cruzada(clase_clasificador, params, X, y, n=5):
         # Evaluar el rendimiento y almacenarlo
         rend = rendimiento(modelo, X_test, y_test)
         rendimientos.append(rend)
-
-        print("\t-------")
-        print(f"\tPartición: {i+1}. Rendimiento:{rend}")
+        if verbose:
+            print("\t-------")
+            print(f"\tPartición: {i+1}. Rendimiento:{rend}")
         # Devolver el rendimiento medio
-    print("\t-------")
+    if verbose: print("\t-------")
     return np.mean(rendimientos)
 
 #------------------------------------------------------------------------------
@@ -893,10 +894,9 @@ def testEj4():
     print(f"\n\tResultado Medio:               {r}")
     print(f"\tRendimiento en Cjto de Prueba: {rendimiento(lr16,Xp_cancer_n,yp_cancer)}\n")
 
-testEj4()
 
 
-raise
+
 # ===================================================
 # EJERCICIO 5: APLICANDO LOS CLASIFICADORES BINARIOS
 # ===================================================
@@ -924,39 +924,120 @@ raise
 
 # ----------------------------
 
+# Vamos a definir una función que haga una simple búsqueda de parámetros, en este caso, hará
+# una búsqueda exhaustiva pero de pocas combinaciones para no complicarlo demasiado.
 
+# La función recibirá el Conjunto de datos entero, y como parámetros opcionales podemos especificar
+# el tamaño de los conjuntos de validación y prueba, que por defecto son 0.2
+# también podemos especificar el normalizador, por si queremos usar uno que no sea el Standard
+
+def Ajusta_parametros(Xev,yev,Xp,yp,val=0.2):
+
+    # Hacemos la separación de los datos, por no complicar el código, forzamos que haya que
+    # especificar conjunto de validación 
+    if val == 0 : raise Exception("Especifica tamaño de validación")
+    Xe,Xv,ye,yv=particion_entr_prueba(Xev,yev,test=val)
+
+    # Estos valores se irán actualizando para conservar los que den mayor rendimiento
+    mejor_rendimiento = 0
+    mejor_rate = 0
+    mejor_batch_tam = 0
+    mejor_rate_decay = False
+
+    print("\n-------")
+    print("Comenzando búsqueda exhaustiva de parámetros")
+    print("-------\n")
+
+    # Comenzamos la búsqueda
+    for l_rate in [0.1, 0.01, 0.001]:
+        for batch_tam in [16, 32, 64, 128]:
+            for rate_decay in [True, False]:
+                # Creamos y entrenamos el modelo
+                lr = RegresionLogisticaMiniBatch(rate=l_rate, batch_tam=batch_tam, rate_decay=rate_decay)
+                lr.entrena(Xe, ye, Xv, yv, salida_epoch=False,early_stopping=True)
+
+                # Evaluamos su rendimiento
+                rend = rendimiento_validacion_cruzada(RegresionLogisticaMiniBatch,{"batch_tam":batch_tam,"rate":l_rate,"rate_decay":rate_decay}, Xe,ye,n=5, verbose=False)
+                print(f" rate: {l_rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")
+
+                # Actualizamos mejores parámetros si es necesario
+                if rend > mejor_rendimiento:
+                    mejor_rendimiento = rend
+                    mejor_rate = l_rate
+                    mejor_batch_tam = batch_tam
+                    mejor_rate_decay = rate_decay
+    print("\n-------")
+    print(f"Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {mejor_rate_decay}, rendimiento: {mejor_rendimiento}")
+    print("\nEntrenando con los mejores parámetros: ")
+    print("-------\n")
+
+    # Una vez tenemos los mejores Parámetros entrenaremos un modelo con estos, y daremos su rendimiento sobre el cjto de prueba
+    lr_best = RegresionLogisticaMiniBatch(rate=mejor_rate, batch_tam=mejor_batch_tam, rate_decay=mejor_rate_decay)
+    lr_best.entrena(Xe, ye, Xv ,yv , early_stopping=True, salida_epoch=True)
+
+    print("\n-------")
+    print(f"Rendimiento sobre Conjunto de Prueba: {rendimiento(lr_best, Xp, yp)}")
+    print("-------\n")
+
+def testEj5():
+        print("\n###########################################")
+        print("############### EJERCICIO 3 ###############")
+        print("###########################################\n")
+
+        # Ya tenemos estos datos separados y normalizados de ejercicios anteriores
+        print("##->              Datos de Cancer\n")
+        Ajusta_parametros(Xe_cancer_n, ye_cancer, Xp_cancer_n, yp_cancer)
+
+        # regresión logística binaria necesita que los valores de clasif sean 0 y 1,
+        #  hacemos la conversión con np.where()
+        print("##->              Datos de Votos\n")
+        y_votos_lr = np.where(y_votos == y_votos[0], 0, 1)
+        Xe_votos,ye_votos,Xp_votos,yp_votos=particion_entr_prueba(X_votos,y_votos_lr,test=0.2)
+        # No es necesario normalizar este dataset
+        Ajusta_parametros(Xe_votos,Xp_votos,ye_votos,yp_votos)
+       
+        print("##->              Datos de Películas\n")
+        # Como los datos de las películas de IMDB ya están vectorizados no es necesario hacer nada
+        Ajusta_parametros(X_train_imdb, y_train_imdb, X_test_imdb, y_test_imdb)
+
+
+testEj5()
+
+raise
 # ----------------------------
 # - Cáncer de mama 
 # ----------------------------
 
-mejor_rendimiento = 0
-mejor_rate = 0
-mejor_batch_tam = 0
-mejor_rate_decay = False
+def aplica_cancer():
 
-# Búsqueda de parámetros
-for rate in [0.1, 0.01, 0.001]:
-    for batch_tam in [16, 32, 64, 128]:
-        for rate_decay in [True, False]:
-            # Crear y entrenar el modelo
-            lr = RegresionLogisticaMiniBatch(rate=rate, batch_tam=batch_tam, rate_decay=rate_decay)
-            lr.entrena(Xe_cancer_n, ye_cancer, salida_epoch=False)
-            
-            # Evaluar rendimiento
-            rend = rendimiento_validacion_cruzada(RegresionLogisticaMiniBatch,{"batch_tam":batch_tam,"rate":rate,"rate_decay":rate_decay}, Xe_cancer_n,ye_cancer,n=5)
-            print(f"\n rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")
-            
-            # Actualizar mejores parámetros si es necesario
-            if rend > mejor_rendimiento:
-                mejor_rendimiento = rend
-                mejor_rate = rate
-                mejor_batch_tam = batch_tam
-                mejor_rate_decay = rate_decay
+    mejor_rendimiento = 0
+    mejor_rate = 0
+    mejor_batch_tam = 0
+    mejor_rate_decay = False
 
-print(f"Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {mejor_rate_decay}, rendimiento: {mejor_rendimiento} \n")
+    # Búsqueda de parámetros
+    for rate in [0.1, 0.01, 0.001]:
+        for batch_tam in [16, 32, 64, 128]:
+            for rate_decay in [True, False]:
+                # Crear y entrenar el modelo
+                lr = RegresionLogisticaMiniBatch(rate=rate, batch_tam=batch_tam, rate_decay=rate_decay)
+                lr.entrena(Xe_cancer_n, ye_cancer, salida_epoch=False)
+                
+                # Evaluar rendimiento
+                rend = rendimiento_validacion_cruzada(RegresionLogisticaMiniBatch,{"batch_tam":batch_tam,"rate":rate,"rate_decay":rate_decay}, Xe_cancer_n,ye_cancer,n=5)
+                print(f"\n rate: {rate}, batch_tam: {batch_tam}, rate_decay: {rate_decay}, rendimiento: {rend} ")
+                
+                # Actualizar mejores parámetros si es necesario
+                if rend > mejor_rendimiento:
+                    mejor_rendimiento = rend
+                    mejor_rate = rate
+                    mejor_batch_tam = batch_tam
+                    mejor_rate_decay = rate_decay
 
-lr = RegresionLogisticaMiniBatch(rate=mejor_rate, batch_tam=mejor_batch_tam, rate_decay=mejor_rate_decay)
-lr.entrena(Xe_cancer_n, ye_cancer, early_stopping=True, salida_epoch=True)
+    print(f"Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_batch_tam}, rate_decay: {mejor_rate_decay}, rendimiento: {mejor_rendimiento} \n")
+
+    lr = RegresionLogisticaMiniBatch(rate=mejor_rate, batch_tam=mejor_batch_tam, rate_decay=mejor_rate_decay)
+    lr.entrena(Xe_cancer_n, ye_cancer, early_stopping=True, salida_epoch=True)
 
 # ----------------------------
 # - Votos de congresistas US
@@ -999,19 +1080,7 @@ print(f"Mejores parámetros encontrados: rate: {mejor_rate}, batch_tam: {mejor_b
 lr = RegresionLogisticaMiniBatch(rate=mejor_rate, batch_tam=mejor_batch_tam, rate_decay=mejor_rate_decay)
 lr.entrena(Xe_votos_n, ye_votos, early_stopping=True, salida_epoch=True)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+raise
 
 # =====================================================
 # EJERCICIO 6: CLASIFICACIÓN MULTICLASE CON ONE vs REST
@@ -1069,6 +1138,7 @@ lr.entrena(Xe_votos_n, ye_votos, early_stopping=True, salida_epoch=True)
 # >>> 0.9
 # --------------------------------------------------------------------
 
+raise
 
 
 
@@ -1563,6 +1633,8 @@ rendimiento(rl_iris_m,Xp_iris,yp_iris)
 #testEj2_1()
 #testEj2_2()
 #test_Ej3()
+#testEj4()
+
 
 ##################################################################################
 
