@@ -981,7 +981,7 @@ def Ajusta_parametros(Xev,yev,Xp,yp,val=0.2):
 
 def testEj5():
         print("\n###########################################")
-        print("############### EJERCICIO 3 ###############")
+        print("############### EJERCICIO 5 ###############")
         print("###########################################\n")
 
         # Ya tenemos estos datos separados y normalizados de ejercicios anteriores
@@ -1000,7 +1000,7 @@ def testEj5():
         # Como los datos de las películas de IMDB ya están vectorizados no es necesario hacer nada
         Ajusta_parametros(X_train_imdb, y_train_imdb, X_test_imdb, y_test_imdb)
 
-testEj5()
+
 
 # =====================================================
 # EJERCICIO 6: CLASIFICACIÓN MULTICLASE CON ONE vs REST
@@ -1058,7 +1058,7 @@ testEj5()
 # >>> 0.9
 # --------------------------------------------------------------------
 
-raise
+
 
 
 
@@ -1093,29 +1093,22 @@ class RL_OvR():
         return self.clases[np.argmax(probabilidades, axis=0)]
 
 # --------------------------------
-
 # Test
+
 Xe_iris,Xp_iris,ye_iris,yp_iris=particion_entr_prueba(X_iris,y_iris)
-
-rl_iris_ovr=RL_OvR(rate=0.01,batch_tam=8)
-
+rl_iris_ovr=RL_OvR(rate=0.001,batch_tam=8)
 rl_iris_ovr.entrena(Xe_iris,ye_iris)
 
-rendimiento(rl_iris_ovr,Xe_iris,ye_iris)
-# 0.8333333333333334
+def testEj6():
+    print("\n###########################################")
+    print("############### EJERCICIO 6 ###############")
+    print("###########################################\n")
 
-rendimiento(rl_iris_ovr,Xp_iris,yp_iris)
-# >>> 0.9
-
-
-
-            
-# --------------------------------
+    print("##->              Datos de Iris\n")
 
 
-
-
-
+    print(f"Rendimiento en Entrenamiento: {rendimiento(rl_iris_ovr,Xe_iris,ye_iris)}")
+    print(f"Rendimieno en Prueba:         {rendimiento(rl_iris_ovr,Xp_iris,yp_iris)}")
 
 
 # =================================
@@ -1200,26 +1193,20 @@ def codifica_one_hot(X):
     return X_one_hot
 
 
-
+# --------------------------------
 # Test
-Xc=np.array([     ["a",1,"c","x"],
-                  ["b",2,"c","y"],
-                  ["c",1,"d","x"],
-                  ["a",2,"d","z"],
-                  ["c",1,"e","y"],
-                  ["c",2,"f","y"]])
+def TestEj7():
+    print("\n###########################################")
+    print("############### EJERCICIO 6 ###############")
+    print("###########################################\n")
+    Xc=np.array([   ["a",1,"c","x"],
+                    ["b",2,"c","y"],
+                    ["c",1,"d","x"],
+                    ["a",2,"d","z"],
+                    ["c",1,"e","y"],
+                    ["c",2,"f","y"]])
    
-codifica_one_hot(Xc)
-# Salida esperada:
-# array([[1., 0., 0., 1., 0., 1., 0., 0., 0., 1., 0., 0.],
-#        [0., 1., 0., 0., 1., 1., 0., 0., 0., 0., 1., 0.],
-#        [0., 0., 1., 1., 0., 0., 1., 0., 0., 1., 0., 0.],
-#        [1., 0., 0., 0., 1., 0., 1., 0., 0., 0., 0., 1.],
-#        [0., 0., 1., 1., 0., 0., 0., 1., 0., 0., 1., 0.],
-#        [0., 0., 1., 0., 1., 0., 0., 0., 1., 0., 1., 0.]])
-
-
-
+    print(f"\t- Original:\n\n{Xc}\n\n\t- Codificado:\n\n{codifica_one_hot(Xc)}\n")
 
 # =====================================================
 # EJERCICIO 8: APLICACIONES DEL CLASIFICADOR MULTICLASE
@@ -1555,7 +1542,8 @@ rendimiento(rl_iris_m,Xp_iris,yp_iris)
 #test_Ej3()
 #testEj4()
 #testEj5()
-
+#testEj6()
+#TestEj7()
 
 ##################################################################################
 
