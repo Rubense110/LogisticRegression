@@ -258,7 +258,7 @@ def testEj1():
     print("   Entrenamiento     - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesE, countE, (countE / np.sum(countE)) * 100))
     print("   Prueba            - clases:{0}    - Nº de ejemplos: {1}   - Distribución: {2}    ".format(clasesP, countP, (countP / np.sum(countP)) * 100),"\n")
 
-
+testEj1()
 # ===========================
 # EJERCICIO 2: NORMALIZADORES
 # ===========================
@@ -374,7 +374,7 @@ def testEj2_1():
     print("- Media   {0}\n- Desviaciación típica   {1}\n".format(np.mean(X_normalizado), np.std(X_normalizado, axis = 0)))
 
 
-
+testEj2_1()
 
 
 # ------------------------
@@ -449,7 +449,7 @@ def testEj2_2():
     print("- Datos Normalizados:\n {}\n".format(X_normalizado_minmax))
 
 
-
+testEj2_2()
 
 
 
@@ -655,6 +655,7 @@ def rendimiento(clasif,X,y):
 
 from scipy.special import expit    
 
+# Sigmoide
 def sigmoide(x):
     return expit(x)
 
@@ -666,6 +667,7 @@ class RegresionLogisticaMiniBatch:
         self.n_epochs = n_epochs
         self.batch_tam = batch_tam
         self.pesos = None
+        # añado random seed para procurar iguales resultados en cada entrenamiento
         self.seed = random_seed
 
     def entrena(self, X, y, Xv=None, yv=None, n_epochs=100, salida_epoch=False,
@@ -765,6 +767,7 @@ def testEj3():
     print("\t   Ejemplo 24: {0}\n\t   Ejemplo 25: {1}\n\t   Ejemplo 26: {2}\n ".format(probabilidades[0],probabilidades[1],probabilidades[2]))
     print("\t- Rendimiento\n\t   Entrenamiento: {0}\n\t   Prueba: {1}".format(rendCEntren,rendCPrueba))
 
+testEj3()
 
 # =================================================
 # EJERCICIO 4: IMPLEMENTACIÓN DE VALIDACIÓN CRUZADA
@@ -893,7 +896,7 @@ def testEj4():
     print(f"\n\tResultado Medio:               {r}")
     print(f"\tRendimiento en Cjto de Prueba: {rendimiento(lr16,Xp_cancer_n,yp_cancer)}\n")
 
-
+testEj4()
 
 
 # ===================================================
@@ -1000,6 +1003,7 @@ def testEj5():
         # Como los datos de las películas de IMDB ya están vectorizados no es necesario hacer nada
         ajusta_parametros(X_train_imdb, y_train_imdb, X_test_imdb, y_test_imdb)
 
+testEj5()
 # =====================================================
 # EJERCICIO 6: CLASIFICACIÓN MULTICLASE CON ONE vs REST
 # =====================================================
@@ -1108,7 +1112,7 @@ def testEj6():
     print(f"Rendimiento en Entrenamiento: {rendimiento(rl_iris_ovr,Xe_iris,ye_iris)}")
     print(f"Rendimieno en Prueba:         {rendimiento(rl_iris_ovr,Xp_iris,yp_iris)}")
 
-
+testEj6()
 # =================================
 # EJERCICIO 7: CODIFICACIÓN ONE-HOT
 # =================================
@@ -1206,6 +1210,7 @@ def testEj7():
    
     print(f"\t- Original:\n\n{Xc}\n\n\t- Codificado:\n\n{codifica_one_hot(Xc)}\n")
 
+testEj7()
 # =====================================================
 # EJERCICIO 8: APLICACIONES DEL CLASIFICADOR MULTICLASE
 # =====================================================
@@ -1289,7 +1294,7 @@ def testEj8_1():
     Xe_credito, Xp_credito, ye_credito, yp_credito = particion_entr_prueba(X_credito_one_hot, y_credito)
     ajusta_parametros_OvR(Xe_credito, ye_credito, Xp_credito, yp_credito)
 
-
+testEj8_1()
 
 # ---------------------------------------------------------
 # 8.2) Clasificación de imágenes de dígitos escritos a mano
@@ -1392,6 +1397,7 @@ def testEj8_2(recorta=True):
     else:
         ajusta_parametros_OvR(Xe_digitos, ye_digitos, Xp_digitos, yp_digitos, crossval=False)
 
+testEj8_2()
 
 
 
@@ -1586,7 +1592,7 @@ def testEj9():
     print("\t- Rendimiento\n\t   Entrenamiento: {0}\n\t   Prueba: {1}".format(rendCEntren,rendCPrueba))
     
 
-
+testEj9()
 
 
 
