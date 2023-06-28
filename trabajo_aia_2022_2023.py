@@ -663,6 +663,7 @@ def sigmoide(x):
 class RegresionLogisticaMiniBatch:
     def __init__(self, rate=0.1, rate_decay=False, n_epochs=100, batch_tam=64, random_seed=1):
         self.rate = rate
+        self.rate_inicial = rate
         self.rate_decay = rate_decay
         self.n_epochs = n_epochs
         self.batch_tam = batch_tam
@@ -675,7 +676,7 @@ class RegresionLogisticaMiniBatch:
             # Las clases están dadas por los valores de y, positiva en 2º lugar como es definida en los datos
             self.clases = np.unique(y)
             num_caract = X.shape[1]
-            self.pesos = np.random.randn(num_caract)
+            self.pesos = np.random.randn(num_caract+1)
 
             mejor_EC = float('inf')
             cuenta_paciencia = 0
@@ -695,11 +696,12 @@ class RegresionLogisticaMiniBatch:
                 # De 0 a tam_X, saltando de batch en batch
                 for i in range(0, X.shape[0], self.batch_tam):
                     X_mini, y_mini = X[i:i+self.batch_tam], y[i:i+self.batch_tam]
-                    grad = np.dot(X_mini.T, (y_mini - self.clasifica_prob(X_mini) ))
+                    X_mini_bias = np.c_[np.ones((X_mini.shape[0], 1)), X_mini] # columna de 1 en bias
+                    grad = np.dot(X_mini_bias.T, (y_mini - self.clasifica_prob(X_mini) ))
                     
                     # Actualizacion de tasa de aprendizaje  
                     if self.rate_decay:
-                        self.rate = self.rate * (1/(1 + epoch))
+                        self.rate = self.rate_inicial * (1/(1 + epoch))
 
                     # Actualizacion de pesos
                     self.pesos += self.rate * grad
@@ -716,9 +718,6 @@ class RegresionLogisticaMiniBatch:
                             print(f"\t\ten validación    EC: {EC_val}, rendimiento : {rend_val}\n")
 
                     if early_stopping:
-                        #No se usa validacion cuando hay early stopping: Xv e yv son resp. X e y.
-                        Xv = X
-                        yv = y
                         EC_val =  np.sum(self.entropia_cruzada(yv,self.clasifica(Xv)))
                         if EC_val < mejor_EC:
                             mejor_EC = EC_val
@@ -734,7 +733,8 @@ class RegresionLogisticaMiniBatch:
     def clasifica_prob(self, X):
         if self.pesos is None:
             raise ClasificadorNoEntrenado("El clasificador no ha sido entrenado.")
-        z = np.dot(X, self.pesos)
+        X_bias = np.c_[np.ones((X.shape[0], 1)), X]
+        z = np.dot(X_bias, self.pesos)
         # expit(z) equivale a sigmoide(z)
         return sigmoide(z)
     
@@ -896,7 +896,7 @@ def testEj4():
     print(f"\n\tResultado Medio:               {r}")
     print(f"\tRendimiento en Cjto de Prueba: {rendimiento(lr16,Xp_cancer_n,yp_cancer)}\n")
 
-testEj4()
+#testEj4()
 
 
 # ===================================================
@@ -1003,7 +1003,7 @@ def testEj5():
         # Como los datos de las películas de IMDB ya están vectorizados no es necesario hacer nada
         ajusta_parametros(X_train_imdb, y_train_imdb, X_test_imdb, y_test_imdb)
 
-testEj5()
+#testEj5()
 # =====================================================
 # EJERCICIO 6: CLASIFICACIÓN MULTICLASE CON ONE vs REST
 # =====================================================
@@ -1199,7 +1199,7 @@ def codifica_one_hot(X):
 # Test
 def testEj7():
     print("\n###########################################")
-    print("############### EJERCICIO 6 ###############")
+    print("############### EJERCICIO 7 ###############")
     print("###########################################\n")
     Xc=np.array([   ["a",1,"c","x"],
                     ["b",2,"c","y"],
@@ -1294,7 +1294,7 @@ def testEj8_1():
     Xe_credito, Xp_credito, ye_credito, yp_credito = particion_entr_prueba(X_credito_one_hot, y_credito)
     ajusta_parametros_OvR(Xe_credito, ye_credito, Xp_credito, yp_credito)
 
-testEj8_1()
+#testEj8_1()
 
 # ---------------------------------------------------------
 # 8.2) Clasificación de imágenes de dígitos escritos a mano
@@ -1397,7 +1397,7 @@ def testEj8_2(recorta=True):
     else:
         ajusta_parametros_OvR(Xe_digitos, ye_digitos, Xp_digitos, yp_digitos, crossval=False)
 
-testEj8_2()
+#testEj8_2()
 
 
 
@@ -1477,6 +1477,7 @@ class RL_Multinomial:
     def __init__(self, rate=0.1, rate_decay=False, batch_tam=64):
         self.rate = rate
         self.rate_decay = rate_decay
+        self.rate_inicial = rate
         self.batch_tam = batch_tam
         self.pesos = None
 
@@ -1521,7 +1522,7 @@ class RL_Multinomial:
                 grad = np.dot(error.T, X_mini)
                 
                 if self.rate_decay:
-                    self.rate = self.rate * (1/(1 + epoch))
+                    self.rate = self.rate_inicial * (1/(1 + epoch))
                     
                 self.pesos += self.rate * grad
 
@@ -1536,19 +1537,18 @@ class RL_Multinomial:
                 # Empleamos los conjuntos de validación sólo si early_stopping = True
                 # el proceso es el mismo que en el clasif binario
                 if early_stopping:
-                    if Xv is not None and yv is not None:
-                        EC_val = self.entropia_cruzada(yv, self.clasifica_prob(Xv))
-                        
-                        print(f"\ten validación    EC: {EC_val}, Rendimiento: {rendimiento(self, Xv, yv)}")
-                        if EC_val < mejor_EC:
-                            mejor_EC = EC_val
-                            cuenta_paciencia = 0
-                        else:
-                            cuenta_paciencia += 1
-                            if cuenta_paciencia >= paciencia:
-                                print("\t-------")
-                                print("\tPARADA TEMPRANA\n")
-                                return
+                    EC_val = self.entropia_cruzada(yv, self.clasifica_prob(Xv))
+                    
+                    print(f"\ten validación    EC: {EC_val}, Rendimiento: {rendimiento(self, Xv, yv)}")
+                    if EC_val < mejor_EC:
+                        mejor_EC = EC_val
+                        cuenta_paciencia = 0
+                    else:
+                        cuenta_paciencia += 1
+                        if cuenta_paciencia >= paciencia:
+                            print("\t-------")
+                            print("\tPARADA TEMPRANA\n")
+                            return
                 
     # Clasifica_prob ahora devuelve una probabilidad en softmax
     def clasifica_prob(self, X):
@@ -1609,7 +1609,7 @@ testEj9()
 #testEj7()
 #testEj8_1()
 #testEj8_2()
-testEj9()
+#testEj9()
 
 ##################################################################################
 
